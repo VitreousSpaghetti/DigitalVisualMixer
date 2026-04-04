@@ -4,6 +4,11 @@ var path = './src/resource/db.json';
 var pathWrite = './src/resource/db.json';
 
 var load = function (pathToload) {
+    // Se il file non esiste, lo crea con la struttura DB vuota di default
+    if (!existsSync(pathToload)) {
+        var emptyDb = { titol: 'DB channel', channel: [] };
+        writeFileSync(pathToload, JSON.stringify(emptyDb));
+    }
     var rawdata = readFileSync(pathToload);
     var jsonFile = JSON.parse(rawdata);
     return jsonFile;
