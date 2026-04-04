@@ -13,15 +13,16 @@ function refreshHydra(jsx) {
     document.body.appendChild(s);
 }
 
-//da implementare
-function refreshHydraWithTransiction(source1, source2, transitction) {
-
-    if (document.getElementById('chalfunction')) {
-        document.getElementById('chalfunction').remove();
+// Esegue una transizione nel canvas del mixer tra source1 (vecchio) e source2 (nuovo)
+// Usa window.transProgress come fattore di blend animato (0→1)
+function refreshHydraWithTransiction(source1, source2, transition) {
+    if (document.getElementById('chalTransition')) {
+        document.getElementById('chalTransition').remove();
     }
     var s = document.createElement('script');
-    s.setAttribute("id", "chalfunction");
-    s.textContent = source1+"."+transitction+"("+source2+"()=i++).out";//inne
+    s.setAttribute("id", "chalTransition");
+    // Genera: src(o1).blend(src(o0), () => window.transProgress).out(o0); render(o0);
+    s.textContent = source1 + "." + transition + "(" + source2 + ", () => window.transProgress).out(o0); render(o0);";
     document.body.appendChild(s);
 }
 function resetAudioAndSpeed() {
@@ -43,4 +44,4 @@ function inithydra() {
     window.hydraMain = hydraMain;
     window.resetAudioAndSpeed = resetAudioAndSpeed;
 }
-export { inithydra, refreshHydra, resetAudioAndSpeed }
+export { inithydra, refreshHydra, refreshHydraWithTransiction, resetAudioAndSpeed }

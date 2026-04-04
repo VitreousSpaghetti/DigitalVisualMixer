@@ -24,7 +24,8 @@
         "express": "^4.17.2",
         "hydra-synth": "^1.3.22",
         "p5js": "^1.2.18",
-        "socket.io": "^4.7.2"
+        "socket.io": "^4.7.2",
+    "vitreousdatabase": "github:VitreousSpaghetti/VitreousDataBase"
     },
     "devDependencies": {
         "@rollup/plugin-node-resolve": "^15.2.3"

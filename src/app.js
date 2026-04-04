@@ -127,19 +127,28 @@ var channelShow =  0; //default
 var toload = true; //default
 
 // handle incoming connections from clients
-io.sockets.on('connection', function(socket) {
+io.sockets.on('connection', async function(socket) {
     console.log("app: init connection");
- 
-    //getChannel setted live
-    io.sockets.emit("get_channel", searchChannel(channelShow));  
 
-    io.sockets.emit("get_toload", toload);  
+    //getChannel setted live (await necessario: searchChannel è ora async)
+    io.sockets.emit("get_channel", await searchChannel(channelShow));
+
+    io.sockets.emit("get_toload", toload);
 
     //set the channel in charge
-    socket.on('set_channel', function(variable) {
-        console.log("app: set_channel to show "+variable);
-        channelShow = variable;
-        socket.broadcast.emit('set_channel', searchChannel(channelShow));
+    socket.on('set_channel', async function(variable) {
+        // Supporta sia vecchio payload (numero) che nuovo ({ id, transition })
+        var channelId = (typeof variable === 'object' && variable.id !== undefined)
+            ? variable.id : variable;
+        var transition = (typeof variable === 'object' && variable.transition)
+            ? variable.transition : { type: 'cut', duration: 0 };
+
+        channelShow = channelId;
+        console.log("app: set_channel to show " + channelId + " transition: " + transition.type);
+
+        var channelData = await searchChannel(channelShow);
+        // Inietta la config transizione nel payload mandato al live
+        socket.broadcast.emit('set_channel', Object.assign({}, channelData, { transition: transition }));
     });
 
     //return channel in live
@@ -157,29 +166,29 @@ io.sockets.on('connection', function(socket) {
     });
 
     //save to db the code of a channel changed
-    socket.on('save_channel', function(variable) {
+    socket.on('save_channel', async function(variable) {
         console.log("app: save_channel "+variable.id);
-        saveChannel(variable);
+        await saveChannel(variable);
     });
-    
+
     //return all the channels
-    socket.on('get_all', function() {
-        console.log("app: get_all ");
-        var allChannel = getAll();
+    socket.on('get_all', async function() {
+        console.log("app: get_all");
+        var allChannel = await getAll();
         socket.emit('get_all', allChannel);
     });
-    
+
     //return the code of a channel
-    socket.on('get_code', function(variable) { 
+    socket.on('get_code', async function(variable) {
         console.log("app: get_code "+variable);
-        var code = searchChannel(variable).code;
+        var code = (await searchChannel(variable)).code;
         socket.emit('get_code', code);
     });
 
     //return a single channel
-    socket.on('find_channel', function(variable) { 
-        console.log("app: get_code "+variable);
-        var channel = searchChannel(variable);
+    socket.on('find_channel', async function(variable) {
+        console.log("app: find_channel "+variable);
+        var channel = await searchChannel(variable);
         socket.emit('find_channel', channel);
     });
 

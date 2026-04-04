@@ -78,6 +78,33 @@
                 <li class="nav-item">
                   <a class="nav-link" href="#">Transition</a>
                 </li>-->
+                <li class="nav-item dropdown">
+                  <a class="nav-link dropdown-toggle" href="#" id="navbarTransitionLink" role="button"
+                    data-bs-toggle="dropdown" aria-expanded="false">
+                    Transition
+                  </a>
+                  <ul class="dropdown-menu" aria-labelledby="navbarTransitionLink" style="padding: 8px 12px; min-width: 200px;">
+                    <li>
+                      <div class="mb-2">
+                        <label style="color:#ababab; font-size:0.85em;">Type</label>
+                        <select id="transitionType" class="form-select form-select-sm"
+                          style="background:#363636; color:#fff; border:1px solid #555;">
+                          <option value="cut">Cut</option>
+                          <option value="crossfade">Crossfade</option>
+                          <option value="add">Add</option>
+                        </select>
+                      </div>
+                    </li>
+                    <li>
+                      <div>
+                        <label style="color:#ababab; font-size:0.85em;">Duration (ms)</label>
+                        <input type="number" id="transitionDuration" value="1000" min="100" max="10000" step="100"
+                          class="form-control form-control-sm"
+                          style="background:#363636; color:#fff; border:1px solid #555;">
+                      </div>
+                    </li>
+                  </ul>
+                </li>
                 <li class="nav-item">
                   <a class="nav-link" href="/about">About</a>
                 </li>

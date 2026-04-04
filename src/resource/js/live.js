@@ -23,24 +23,95 @@ https://hydra.ojack.xyz/api/
 
 //INIT SOCKET
 
-var socket = io(); 
+var socket = io();
 var channel =  null; //default
-var toload = null; //default  
+var toload = null; //default
 var hydra = new Hydra({ detectAudio: true, canvas: document.getElementById("hydra-canvas") });
 hydra.setResolution(1920, 1080);
 a.setBins(6);
 
-var loadChannel = function(){ 
+// Stato transizione: transProgress è globale perché letto dagli script Hydra iniettati
+window.transProgress = 0;
+var isTransitioning = false;
+
+// Congela il frame corrente in o1 prima di caricare il nuovo canale
+function captureCurrentFrame() {
+    src(o0).out(o1);
+}
+
+function removeTransitionScript() {
+    var el = document.getElementById('chalTransition');
+    if (el) el.remove();
+}
+
+// Inietta lo script Hydra che esegue il blend tra o1 (vecchio) e o0 (nuovo)
+function injectTransitionScript(type) {
+    removeTransitionScript();
+    var s = document.createElement('script');
+    s.setAttribute("id", "chalTransition");
+    if (type === 'crossfade') {
+        s.textContent = "src(o1).blend(src(o0), () => window.transProgress).out(o0); render(o0);";
+    } else if (type === 'add') {
+        s.textContent = "src(o1).add(src(o0), () => window.transProgress).out(o0); render(o0);";
+    }
+    document.body.appendChild(s);
+}
+
+// Avvia la transizione animando transProgress da 0 a 1 tramite il callback update(dt) di Hydra
+function startTransition(type, durationMs) {
+    // Interrompe eventuale transizione in corso prima di avviarne una nuova
+    if (isTransitioning) {
+        update = null;
+        removeTransitionScript();
+        isTransitioning = false;
+    }
+    window.transProgress = 0;
+    isTransitioning = true;
+    var elapsed = 0;
+    var durationSec = durationMs / 1000; // dt di Hydra è in secondi
+
+    injectTransitionScript(type);
+
+    // update(dt) è il callback Hydra chiamato ogni frame, dt = delta time in secondi
+    update = function(dt) {
+        elapsed += dt;
+        window.transProgress = Math.min(elapsed / durationSec, 1.0);
+        if (window.transProgress >= 1.0) {
+            // Transizione completata: rimuove lo script e torna al render normale
+            update = null;
+            removeTransitionScript();
+            window.transProgress = 0;
+            isTransitioning = false;
+            render(o0);
+        }
+    };
+}
+
+var loadChannel = function(){
     if(channel!==null && toload){
+        var transition = channel.transition || { type: 'cut', duration: 0 };
+        var hasTransition = transition.type !== 'cut' && transition.duration > 0;
+
+        // Cattura il frame corrente PRIMA di caricare il nuovo codice
+        if (hasTransition) {
+            captureCurrentFrame();
+        }
+
+        // Carica il codice del nuovo canale (scrive su o0)
         if (document.getElementById('chalfunction')) {
             document.getElementById('chalfunction').remove();
-          }
-          var s = document.createElement('script');
-          s.setAttribute("id", "chalfunction");
-          s.textContent = channel.code;//inne
-          document.body.appendChild(s); 
-          socket.emit('set_toload', false);
-          a.hide();
+        }
+        var s = document.createElement('script');
+        s.setAttribute("id", "chalfunction");
+        s.textContent = channel.code;
+        document.body.appendChild(s);
+        socket.emit('set_toload', false);
+        a.hide();
+
+        // Avvia animazione transizione dopo che il nuovo codice è in esecuzione
+        if (hasTransition) {
+            startTransition(transition.type, transition.duration);
+        }
     }
 }
 

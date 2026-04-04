@@ -3,3 +3,4 @@
 /.env 
 src/resource/db.json
 package-lock.json
+.claude/settings.local.json

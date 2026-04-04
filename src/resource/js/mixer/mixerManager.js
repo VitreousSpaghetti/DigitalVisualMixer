@@ -23,6 +23,16 @@ export function setLoadprev(variable){
   loadprev= variable;
 }
 
+// Legge la config transizione dalla UI del mixer (tipo e durata)
+function getTransitionConfig() {
+  var typeEl = document.getElementById('transitionType');
+  var durEl = document.getElementById('transitionDuration');
+  return {
+    type: typeEl ? typeEl.value : 'cut',
+    duration: durEl ? parseInt(durEl.value, 10) || 1000 : 1000
+  };
+}
+
 //FUNCTION INIT TO CALL AT THE START OF THE PAGE
 export function initializeChannel(variable){
   const firstInitRetrive = new Promise((resolve, reject) => {
@@ -82,17 +92,21 @@ export function load() {
 }
 
 export function runChannel(channel) {
-  emit('set_channel', channel);
+  // Include la config transizione nel payload per il live
+  var transition = getTransitionConfig();
+  emit('set_channel', { id: channel, transition: transition });
   emit('set_toload', true);
   showChannelLive(channel);
-  console.log("run channel " + channel);
+  console.log("run channel " + channel + " transition: " + transition.type);
 }
 
 export function run() {
-  emit('set_channel', channelSelected);
+  // Include la config transizione nel payload per il live
+  var transition = getTransitionConfig();
+  emit('set_channel', { id: channelSelected, transition: transition });
   emit('set_toload', true);
   showChannelLive(channelSelected);
-  console.log("run channel " + channelSelected);
+  console.log("run channel " + channelSelected + " transition: " + transition.type);
 }
 
 export function prev() {
