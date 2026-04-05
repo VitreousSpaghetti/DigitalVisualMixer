@@ -30,15 +30,23 @@ socket.on('set_channel', function(variable) {
 //RETRIVE CHANNEL BY FIND CHANNEL
 socket.on('find_channel', function (variable) {
     var code = variable.code;
-    reinit(code); 
+    reinit(code);
     if (loadprev) {
         prev();
-        setLoadprev(false) ;
+        setLoadprev(false);
     }
     if (!variable.name) {
         variable.name = variable.id;
     }
     document.getElementById('channelName').value = variable.name + "";
+});
+
+// Riceve la transizione globale dal server e popola la UI
+socket.on('get_transition', function (variable) {
+    var typeEl = document.getElementById('transitionType');
+    var durEl  = document.getElementById('transitionDuration');
+    if (typeEl) typeEl.value = variable.type     || 'cut';
+    if (durEl)  durEl.value  = variable.duration ?? 0;
 });
 
 

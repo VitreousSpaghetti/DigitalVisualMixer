@@ -30,58 +30,92 @@ var hydra = new Hydra({ detectAudio: true, canvas: document.getElementById("hydr
 hydra.setResolution(1920, 1080);
 a.setBins(6);
 
-// Stato transizione: transProgress è globale perché letto dagli script Hydra iniettati
+// transProgress è globale: viene letto come lambda () => window.transProgress dagli script Hydra iniettati
 window.transProgress = 0;
 var isTransitioning = false;
 
-// Congela il frame corrente in o1 prima di caricare il nuovo canale
-function captureCurrentFrame() {
-    src(o0).out(o1);
-}
-
-function removeTransitionScript() {
-    var el = document.getElementById('chalTransition');
+// Rimuove un tag <script> dal DOM per id, se presente
+function removeScript(id) {
+    var el = document.getElementById(id);
     if (el) el.remove();
 }
 
-// Inietta lo script Hydra che esegue il blend tra o1 (vecchio) e o0 (nuovo)
+// Carica codice Hydra nel tag chalfunction (scrittura diretta su o0)
+function loadCode(code) {
+    removeScript('chalfunction');
+    var s = document.createElement('script');
+    s.setAttribute("id", "chalfunction");
+    s.textContent = code;
+    document.body.appendChild(s);
+}
+
+// Redirige l'output del codice canale da o0 a o1 per eseguirlo in parallelo durante la transizione.
+// Rimuove hush() per non cancellare il canale vecchio ancora attivo in o0.
+// Rimuove render() perché la transizione gestisce il rendering su o2.
+function redirectCodeToO1(code) {
+    return code
+        .replace(/hush\(\);?\s*/g, '')
+        .replace(/\.out\(o0\)/g, '.out(o1)')
+        .replace(/\.out\(\)/g, '.out(o1)')
+        .replace(/render\s*\([^)]*\);?\s*/g, '');
+}
+
+// Inietta lo script Hydra che blenda old (o0) con new (o1) e mostra il risultato su o2.
+// Usare o2 evita la dipendenza circolare che si crea blendando su o0.
 function injectTransitionScript(type) {
-    removeTransitionScript();
+    removeScript('chalTransition');
     var s = document.createElement('script');
     s.setAttribute("id", "chalTransition");
     if (type === 'crossfade') {
-        s.textContent = "src(o1).blend(src(o0), () => window.transProgress).out(o0); render(o0);";
+        s.textContent = "src(o0).blend(src(o1), () => window.transProgress).out(o2); render(o2);";
     } else if (type === 'add') {
-        s.textContent = "src(o1).add(src(o0), () => window.transProgress).out(o0); render(o0);";
+        s.textContent = "src(o0).add(src(o1), () => window.transProgress).out(o2); render(o2);";
     }
     document.body.appendChild(s);
 }
 
-// Avvia la transizione animando transProgress da 0 a 1 tramite il callback update(dt) di Hydra
-function startTransition(type, durationMs) {
+// Avvia la transizione:
+//   o0 = vecchio canale (chalfunction intatto, continua a girare)
+//   o1 = nuovo canale (codice rediretto, chalNew)
+//   o2 = blend animato di o0→o1 (chalTransition), visualizzato su schermo
+// Quando transProgress raggiunge 1.0: carica il nuovo canale normalmente in o0 e torna a render(o0)
+function startTransition(newCode, type, durationMs) {
     // Interrompe eventuale transizione in corso prima di avviarne una nuova
     if (isTransitioning) {
         update = null;
-        removeTransitionScript();
+        removeScript('chalTransition');
+        removeScript('chalNew');
+        render(o0);
         isTransitioning = false;
     }
+
     window.transProgress = 0;
     isTransitioning = true;
     var elapsed = 0;
-    var durationSec = durationMs / 1000; // dt di Hydra è in secondi
+    // dt passato da Hydra a update() è timeSinceLastUpdate in millisecondi (non secondi)
 
+    // Nuovo canale reindirizzato su o1: non sovrascrive o0 dove gira ancora il vecchio canale
+    removeScript('chalNew');
+    var s = document.createElement('script');
+    s.setAttribute("id", "chalNew");
+    s.textContent = redirectCodeToO1(newCode);
+    document.body.appendChild(s);
+
+    // Blend o0 (vecchio) → o1 (nuovo) su o2 separato, senza toccare o0
     injectTransitionScript(type);
 
-    // update(dt) è il callback Hydra chiamato ogni frame, dt = delta time in secondi
+    // update(dt) è il callback di Hydra chiamato ogni frame, dt = delta time in secondi
     update = function(dt) {
         elapsed += dt;
-        window.transProgress = Math.min(elapsed / durationSec, 1.0);
+        window.transProgress = Math.min(elapsed / durationMs, 1.0);
         if (window.transProgress >= 1.0) {
-            // Transizione completata: rimuove lo script e torna al render normale
             update = null;
-            removeTransitionScript();
+            removeScript('chalTransition');
+            removeScript('chalNew');
             window.transProgress = 0;
             isTransitioning = false;
+            // Carica il nuovo canale normalmente in o0 e ripristina render(o0)
+            loadCode(newCode);
             render(o0);
         }
     };
@@ -92,25 +126,15 @@ var loadChannel = function(){
         var transition = channel.transition || { type: 'cut', duration: 0 };
         var hasTransition = transition.type !== 'cut' && transition.duration > 0;
 
-        // Cattura il frame corrente PRIMA di caricare il nuovo codice
-        if (hasTransition) {
-            captureCurrentFrame();
-        }
-
-        // Carica il codice del nuovo canale (scrive su o0)
-        if (document.getElementById('chalfunction')) {
-            document.getElementById('chalfunction').remove();
-        }
-        var s = document.createElement('script');
-        s.setAttribute("id", "chalfunction");
-        s.textContent = channel.code;
-        document.body.appendChild(s);
         socket.emit('set_toload', false);
         a.hide();
 
-        // Avvia animazione transizione dopo che il nuovo codice è in esecuzione
         if (hasTransition) {
-            startTransition(transition.type, transition.duration);
+            // Transizione: old in o0, new in o1, blend su o2
+            startTransition(channel.code, transition.type, transition.duration);
+        } else {
+            // Cut diretto: sostituisce chalfunction immediatamente
+            loadCode(channel.code);
         }
     }
 }
@@ -118,7 +142,7 @@ var loadChannel = function(){
 //SET SOCKET EVENT
 
 socket.on('get_channel', function(variable) {
-    channel = variable; 
+    channel = variable;
     loadChannel();
 });
 
@@ -126,22 +150,22 @@ socket.on('get_toload', function(variable) {
     if(toload === null){
         toload = true;
     }else{
-        toload = variable; 
+        toload = variable;
     }
     loadChannel();
 });
 
 socket.on('set_channel', function(variable) {
-    channel = variable; 
-    loadChannel(); 
+    channel = variable;
+    loadChannel();
 });
 
 socket.on('set_toload', function(variable) {
-    toload = variable;  
-    loadChannel(); 
+    toload = variable;
+    loadChannel();
 });
- 
-var resetAudioAndSpeed = function(){ 
+
+var resetAudioAndSpeed = function(){
     a.setScale(10)
     a.setBins(6)
     a.setSmooth(0.8)
@@ -150,17 +174,15 @@ var resetAudioAndSpeed = function(){
     bpm=30;
     console.log(a);
     console.log("speed "+speed);
-    console.log("bpm "+bpm); 
+    console.log("bpm "+bpm);
   }
-  
+
 var init = function(){
     //START SOCKET CONNECTION
-    socket.on('connect', function() { 
-    }); 
+    socket.on('connect', function() {
+    });
     loadChannel();
-     
+
 }
 
 init();
- 
- 

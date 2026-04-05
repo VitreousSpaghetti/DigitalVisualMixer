@@ -23,15 +23,6 @@ export function setLoadprev(variable){
   loadprev= variable;
 }
 
-// Legge la config transizione dalla UI del mixer (tipo e durata)
-function getTransitionConfig() {
-  var typeEl = document.getElementById('transitionType');
-  var durEl = document.getElementById('transitionDuration');
-  return {
-    type: typeEl ? typeEl.value : 'cut',
-    duration: durEl ? parseInt(durEl.value, 10) || 1000 : 1000
-  };
-}
 
 //FUNCTION INIT TO CALL AT THE START OF THE PAGE
 export function initializeChannel(variable){
@@ -92,21 +83,19 @@ export function load() {
 }
 
 export function runChannel(channel) {
-  // Include la config transizione nel payload per il live
-  var transition = getTransitionConfig();
-  emit('set_channel', { id: channel, transition: transition });
+  // La transizione è letta dal DB sul server, basta inviare l'id del canale
+  emit('set_channel', { id: channel });
   emit('set_toload', true);
   showChannelLive(channel);
-  console.log("run channel " + channel + " transition: " + transition.type);
+  console.log("run channel " + channel);
 }
 
 export function run() {
-  // Include la config transizione nel payload per il live
-  var transition = getTransitionConfig();
-  emit('set_channel', { id: channelSelected, transition: transition });
+  // La transizione è letta dal DB sul server, basta inviare l'id del canale
+  emit('set_channel', { id: channelSelected });
   emit('set_toload', true);
   showChannelLive(channelSelected);
-  console.log("run channel " + channelSelected + " transition: " + transition.type);
+  console.log("run channel " + channelSelected);
 }
 
 export function prev() {
@@ -126,11 +115,7 @@ export function save() {
   if (!name) {
     name = channelSelected;
   }
-  var channel = {
-    id: channelSelected,
-    code: jsx,
-    name: name
-  }
+  var channel = { id: channelSelected, code: jsx, name: name };
   document.getElementById(channelSelected).innerText = name;
   document.getElementById(channelSelected).title = name;
   emit('save_channel', channel);
@@ -179,6 +164,20 @@ export function selectChannelLoad(channel) {
 }
 
 
+// Salva la configurazione transizione globale.
+// Chiamata automaticamente quando l'utente modifica #transitionType o #transitionDuration.
+export function saveTransition() {
+  var type     = document.getElementById('transitionType')?.value || 'cut';
+  var duration = parseInt(document.getElementById('transitionDuration')?.value, 10) || 0;
+  emit('save_transition', { type, duration });
+  console.log("Auto-save transition: " + type + " " + duration + "ms");
+}
+
 export function initMixer(){
   emit('get_all');
+  // Salvataggio automatico quando l'utente cambia tipo o durata transizione
+  var typeEl = document.getElementById('transitionType');
+  var durEl  = document.getElementById('transitionDuration');
+  if (typeEl) typeEl.addEventListener('change', saveTransition);
+  if (durEl)  durEl.addEventListener('change',  saveTransition);
 }

@@ -2,89 +2,113 @@
 import { createRequire } from 'module';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 
-// Import del modulo CJS VitreousDataBase da contesto ESM tramite createRequire
 const require = createRequire(import.meta.url);
 const { Database } = require('vitreousdatabase');
 
 const DB_PATH = './src/resource/db.json';
-const ENTITY = 'channel';
+const ENTITY_CHANNEL    = 'channel';
+const ENTITY_TRANSITION = 'transition'; // entità globale: unico record id=0
 
-// --- MIGRAZIONE: legge il vecchio formato {titol, channel:[]} in memoria
-// prima che Database.create() sovrascriva il file con la nuova struttura ---
-var oldChannels = [];
+// --- MIGRAZIONE FILE ---
+// Legge il db.json grezzo PRIMA che Database.create() lo gestisca.
+// Gestisce tre formati storici:
+//   1. Vecchio {titol, channel:[]}
+//   2. VitreousDataBase con transitionType/transitionDuration inline nei channel (da rimuovere)
+//   3. Formato attuale corretto → nessuna migrazione
+var savedChannels = [];
 if (existsSync(DB_PATH)) {
     try {
         var raw = JSON.parse(readFileSync(DB_PATH, 'utf-8'));
-        // Il vecchio formato ha { titol, channel: [] }
-        // Il nuovo formato VitreousDataBase ha { entitiesConfiguration, entities }
+
         if (raw.channel && Array.isArray(raw.channel)) {
-            oldChannels = raw.channel;
-            // Sovrascrive il file con la struttura VitreousDataBase vuota PRIMA di Database.create()
-            // (se il file ha il vecchio formato, _read() di VitreousDataBase troverebbe entitiesConfiguration=undefined)
+            // Caso 1: vecchio formato pre-VitreousDataBase
+            savedChannels = raw.channel;
             writeFileSync(DB_PATH, JSON.stringify({ entitiesConfiguration: {}, entities: {} }));
+
+        } else if (raw.entitiesConfiguration && raw.entities) {
+            var channelCfg = raw.entitiesConfiguration[ENTITY_CHANNEL];
+            if (channelCfg && channelCfg.values &&
+                (channelCfg.values.includes('transitionType') || channelCfg.values.includes('transitionDuration'))) {
+                // Caso 2: channel aveva transitionType/transitionDuration inline → pulisce schema e record
+                var rawChannels = raw.entities[ENTITY_CHANNEL] || [];
+                savedChannels = rawChannels.map(function(ch) {
+                    return { id: ch.id, name: ch.name, code: ch.code };
+                });
+                writeFileSync(DB_PATH, JSON.stringify({ entitiesConfiguration: {}, entities: {} }));
+            }
         }
     } catch (e) {}
 }
 
-// Init database con top-level await (funziona in ESM Node 14.8+)
-// eager: true → cache in memoria, flush() scrive su disco esplicitamente
 const db = await Database.create(DB_PATH, { eager: true });
 
-// Crea l'entità 'channel' se non esiste ancora nello schema.
-// NON usare getEntity() che lancia EntityNotFoundError: un'eccezione in _enqueue
-// rompe la catena di Promise del mutex e tutte le operazioni successive vengono saltate.
-// listEntities() restituisce un array senza mai lanciare.
 const existingEntities = await db.entityManager.listEntities();
-if (!existingEntities.includes(ENTITY)) {
-    await db.entityManager.createEntity(ENTITY, {
+
+// Crea entità channel se assente (senza campi transizione)
+if (!existingEntities.includes(ENTITY_CHANNEL)) {
+    await db.entityManager.createEntity(ENTITY_CHANNEL, {
         type: 'table',
         values: ['id', 'name', 'code'],
-        id: ['id'],          // id è automaticamente notnullable + unique
+        id: ['id'],
         notnullable: [],
         unique: [],
         nested: []
     });
 }
 
-// Reinserisce i canali migrati dal vecchio formato nel nuovo schema
-if (oldChannels.length > 0) {
-    for (const ch of oldChannels) {
+// Crea entità transition se assente (record globale unico id=0)
+if (!existingEntities.includes(ENTITY_TRANSITION)) {
+    await db.entityManager.createEntity(ENTITY_TRANSITION, {
+        type: 'table',
+        values: ['id', 'type', 'duration'],
+        id: ['id'],
+        notnullable: [],
+        unique: [],
+        nested: []
+    });
+    // Inserisce il record di default
+    await db.recordManager.insert(ENTITY_TRANSITION, { id: 0, type: 'cut', duration: 0 });
+    await db.flush();
+}
+
+// Reinserisce i canali salvati dalla migrazione
+if (savedChannels.length > 0) {
+    for (const ch of savedChannels) {
         try {
-            await db.recordManager.insert(ENTITY, {
-                id: ch.id,
+            await db.recordManager.insert(ENTITY_CHANNEL, {
+                id:   ch.id,
                 name: ch.name ?? String(ch.id),
                 code: ch.code ?? ''
             });
-        } catch (e) {
-            // Ignora errori di duplicato (migrazione già avvenuta in run precedenti)
-        }
+        } catch (e) {}
     }
     await db.flush();
 }
 
-// Restituisce tutti i canali ordinati per id
+// --- CANALI ---
+
 export var getAll = async function () {
-    var channels = await db.recordManager.findAll(ENTITY);
+    var channels = await db.recordManager.findAll(ENTITY_CHANNEL);
     if (!channels || channels.length === 0) {
-        // Crea canale 0 di default se il DB è vuoto
-        await db.recordManager.insert(ENTITY, { id: 0, name: '0', code: '' });
+        await db.recordManager.insert(ENTITY_CHANNEL, { id: 0, name: '0', code: '' });
         await db.flush();
-        channels = await db.recordManager.findAll(ENTITY);
+        channels = await db.recordManager.findAll(ENTITY_CHANNEL);
     }
     return channels.sort((a, b) => a.id < b.id ? -1 : 0);
 };
 
-// Salva o aggiorna un canale (upsert: update se esiste, insert se nuovo)
+// Salva o aggiorna un canale (upsert).
+// Aggiornamento parziale: include solo i campi definiti nel payload (code/name).
 export var saveChannel = async function (channelToSave) {
-    var existing = await db.recordManager.findByIdSingle(ENTITY, channelToSave.id);
+    var existing = await db.recordManager.findByIdSingle(ENTITY_CHANNEL, channelToSave.id);
     if (existing) {
-        await db.recordManager.update(ENTITY, { id: channelToSave.id }, {
-            name: channelToSave.name,
-            code: channelToSave.code
-        });
+        var updateFields = {};
+        if (channelToSave.name !== undefined) updateFields.name = channelToSave.name;
+        if (channelToSave.code !== undefined) updateFields.code = channelToSave.code;
+        await db.recordManager.update(ENTITY_CHANNEL, { id: channelToSave.id }, updateFields);
     } else {
-        await db.recordManager.insert(ENTITY, {
-            id: channelToSave.id,
+        await db.recordManager.insert(ENTITY_CHANNEL, {
+            id:   channelToSave.id,
             name: channelToSave.name ?? String(channelToSave.id),
             code: channelToSave.code ?? ''
         });
@@ -92,13 +116,41 @@ export var saveChannel = async function (channelToSave) {
     await db.flush();
 };
 
-// Cerca un canale per ID; se non esiste lo crea vuoto e lo restituisce
 export var searchChannel = async function (channelID) {
-    var channel = await db.recordManager.findByIdSingle(ENTITY, channelID);
+    var channel = await db.recordManager.findByIdSingle(ENTITY_CHANNEL, channelID);
     if (!channel) {
         channel = { id: channelID, name: String(channelID), code: '' };
-        await db.recordManager.insert(ENTITY, channel);
+        await db.recordManager.insert(ENTITY_CHANNEL, channel);
         await db.flush();
     }
     return channel;
+};
+
+// --- TRANSIZIONE GLOBALE ---
+
+// Restituisce la config transizione globale (record id=0).
+// Se il record non esiste (primo avvio) lo crea con default cut/0.
+export var getTransition = async function () {
+    var t = await db.recordManager.findByIdSingle(ENTITY_TRANSITION, 0);
+    if (!t) {
+        t = { id: 0, type: 'cut', duration: 0 };
+        await db.recordManager.insert(ENTITY_TRANSITION, t);
+        await db.flush();
+    }
+    return t;
+};
+
+// Aggiorna la config transizione globale.
+export var setTransition = async function (transitionData) {
+    var existing = await db.recordManager.findByIdSingle(ENTITY_TRANSITION, 0);
+    var record = {
+        type:     transitionData.type     ?? 'cut',
+        duration: transitionData.duration ?? 0
+    };
+    if (existing) {
+        await db.recordManager.update(ENTITY_TRANSITION, { id: 0 }, record);
+    } else {
+        await db.recordManager.insert(ENTITY_TRANSITION, { id: 0, ...record });
+    }
+    await db.flush();
 };

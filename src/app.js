@@ -5,7 +5,7 @@ import fs from 'fs';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { searchChannel, saveChannel, getAll }  from './manager.js' 
+import { searchChannel, saveChannel, getAll, getTransition, setTransition }  from './manager.js'
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { nodeResolve } from '@rollup/plugin-node-resolve';
@@ -137,18 +137,27 @@ io.sockets.on('connection', async function(socket) {
 
     //set the channel in charge
     socket.on('set_channel', async function(variable) {
-        // Supporta sia vecchio payload (numero) che nuovo ({ id, transition })
         var channelId = (typeof variable === 'object' && variable.id !== undefined)
             ? variable.id : variable;
-        var transition = (typeof variable === 'object' && variable.transition)
-            ? variable.transition : { type: 'cut', duration: 0 };
 
         channelShow = channelId;
+
+        // Legge canale e transizione globale dal DB (fonte di verità)
+        var channelData = await searchChannel(channelShow);
+        var transitionData = await getTransition();
+        var transition = { type: transitionData.type, duration: transitionData.duration };
         console.log("app: set_channel to show " + channelId + " transition: " + transition.type);
 
-        var channelData = await searchChannel(channelShow);
-        // Inietta la config transizione nel payload mandato al live
-        socket.broadcast.emit('set_channel', Object.assign({}, channelData, { transition: transition }));
+        socket.broadcast.emit('set_channel', Object.assign({}, channelData, { transition }));
+    });
+
+    // Invia la transizione globale al client che si connette
+    socket.emit('get_transition', await getTransition());
+
+    // Salva la transizione globale quando il mixer la modifica
+    socket.on('save_transition', async function(variable) {
+        console.log("app: save_transition " + variable.type + " " + variable.duration + "ms");
+        await setTransition(variable);
     });
 
     //return channel in live
