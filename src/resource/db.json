@@ -41,7 +41,7 @@
     "transition": [
       {
         "id": 0,
-        "type": "crossfade",
+        "type": "add",
         "duration": 5000
       }
     ],
