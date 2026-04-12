@@ -1,5 +1,5 @@
 
-import { run,prev,save,load,setLoadprev,selectChannelLoad,autosave,initMixer,nextRunLive,prevRunLive} from "./mixerManager.js";
+import { run,prev,save,saveAndRun,load,setLoadprev,selectChannelLoad,autosave,initMixer,nextRunLive,prevRunLive} from "./mixerManager.js";
 import { initMirror } from "./rollupBundle/codeMirrorManager.js";
 import { initMacro } from "./macroManager.js";
 import { initNav,showMacro } from "./navManager.js";
@@ -35,13 +35,14 @@ var selectActionExec = function (selectedAction) {
   }
   if(selectedAction === 'saverun'){
     // TODO-3.3: conferma se il canale selezionato è già quello live (evita errori accidentali)
+    // Il confirm avviene PRIMA di saveAndRun: se l'utente annulla non vogliamo nemmeno salvare
     var currentLiveEl = document.querySelector('.liveChannel');
     var selectedEl = document.querySelector('.selectedChannel');
     if (currentLiveEl && selectedEl && currentLiveEl.id === selectedEl.id) {
       if (!confirm('Questo canale è già LIVE. Mandare in live la nuova versione?')) return;
     }
-    save();
-    run();
+    // saveAndRun: salva sempre, va live solo se il codice è sintatticamente valido
+    saveAndRun();
   }
 } 
 

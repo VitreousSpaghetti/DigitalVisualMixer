@@ -1,12 +1,10 @@
-TODO--------------   
-controllo codice anche al save e save and run dove ferma prima di runnare live (non autosave)
-
-introdurre una demo
-preparare una pagina per le macro ( scalabile: idea di memorizzare macro )
-memorizzare video da poi usare come campionatori
-settaggio di source audio interna al pc
+TODO--------------    
 export db e import db
 init db se non esiste il file
+preparare una pagina per le macro ( scalabile: idea di memorizzare macro )
+settaggio di source audio interna al pc
+memorizzare video da poi usare come campionatori
+introdurre una demo
 DONE--------------
 ipotizzare console di error? o quantomeno un pop-up con errore
 sistemare ctrl+space

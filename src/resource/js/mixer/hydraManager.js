@@ -60,4 +60,19 @@ window.addEventListener('error', function(event) {
     setTimeout(function() { errPanel.style.display = 'none'; }, 5000);
 });
 
+// Controlla la sintassi del codice Hydra senza eseguirlo — usa new Function() che
+// esegue solo il parsing JS e lancia SyntaxError su codice malformato (parentesi mancanti,
+// stringhe non chiuse, ecc.). Non rileva errori Hydra runtime (variabili undefined come
+// osc, solid, o0, ecc.) perché queste esistono solo nel contesto del browser con Hydra caricato.
+// Ritorna { valid: true } oppure { valid: false, error: string }.
+export function validateHydraCode(jsx) {
+    try {
+        // eslint-disable-next-line no-new-func
+        new Function(jsx);
+        return { valid: true };
+    } catch (e) {
+        return { valid: false, error: e.message };
+    }
+}
+
 export { inithydra, refreshHydra, refreshHydraWithTransiction, resetAudioAndSpeed }

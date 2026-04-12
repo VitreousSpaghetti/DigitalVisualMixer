@@ -246,7 +246,7 @@ export function save() {
   var btn = document.getElementById(String(channelSelected));
   if (btn) {
     var nameStr = String(name);
-    var isEmpty = !nameStr || nameStr === String(channelSelected);
+    var isEmpty = !nameStr ;
     if (isEmpty) {
       btn.textContent = '— empty —';
       btn.classList.add('empty-channel');
@@ -266,6 +266,44 @@ export function save() {
   showToast('✓ Saved: ' + name);
   console.log("Save channel " + channel.id);
 }
+// Save & Run con controllo runtime reale (stesso approccio del preview):
+// 1. Salva sempre il codice
+// 2. Esegue il codice localmente via refreshHydra (come fa prev()) per rilevare errori
+// 3. Installa un listener temporaneo su window.error per intercettare errori sincroni
+// 4. Dopo 120ms: se nessun errore → manda in live; se errore → mostra toast e blocca
+// Limitazione: intercetta solo errori che si manifestano entro 120ms dall'esecuzione.
+// Gli errori nell'animation loop di Hydra (asincroni) vengono comunque mostrati nel pannello.
+// Non usato da autosave (il controllo in autosave sarebbe inutile e fastidioso).
+export function saveAndRun() {
+  var jsx = getDoc();
+  save(); // salva sempre, indipendentemente dal risultato del controllo
+
+  // Nasconde errori precedenti per un test pulito
+  var errPanel = document.getElementById('hydraErrorPanel');
+  if (errPanel) errPanel.style.display = 'none';
+
+  // Listener temporaneo: intercetta il primo errore che arriva durante l'esecuzione locale
+  var hadError = false;
+  function tempErrorListener(event) {
+    hadError = true;
+  }
+  window.addEventListener('error', tempErrorListener);
+
+  // Esegue localmente (preview sul canvas del mixer, non in live)
+  refreshHydra(jsx);
+
+  // Dopo 120ms verifica se ci sono stati errori sincroni
+  setTimeout(function() {
+    window.removeEventListener('error', tempErrorListener);
+    if (hadError) {
+      // Errore rilevato: il pannello errore è già stato popolato da window.error in hydraManager
+      showToast('⚠ Save & Run bloccato — errore nel codice', 'error');
+    } else {
+      run(); // nessun errore rilevato → manda in live
+    }
+  }, 120);
+}
+
 export function sequence(){
 
 }
