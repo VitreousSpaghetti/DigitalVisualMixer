@@ -5,7 +5,7 @@ import fs from 'fs';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { searchChannel, saveChannel, getAll, getTransition, setTransition, reorderChannels, reloadDb }  from './manager.js'
+import { searchChannel, saveChannel, getAll, getTransition, setTransition, reorderChannels, reloadDb, createChannel, deleteChannel }  from './manager.js'
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { nodeResolve } from '@rollup/plugin-node-resolve';
@@ -252,6 +252,45 @@ io.sockets.on('connection', async function(socket) {
     socket.on('save_order', async function(orderedIds) {
         console.log("app: save_order ricevuto per", orderedIds.length, "canali");
         await reorderChannels(orderedIds);
+    });
+
+    // Crea un nuovo canale vuoto e notifica SOLO il client richiedente.
+    // Non usa broadcast per evitare il side effect autosave toggle su tutti i client
+    // (il percorso get_all chiama autosave() in mixerEmitter; questo percorso no).
+    socket.on('create_channel', async function() {
+        console.log("app: create_channel");
+        var newId = await createChannel();
+        var allChannels = await getAll();
+        // Risposta solo al socket richiedente (non broadcast)
+        socket.emit('channel_created', { id: newId, channels: allChannels });
+    });
+
+    // Elimina il canale specificato; guard per non consentire la cancellazione
+    // dell'ultimo canale rimanente. Resetta channelShow/channelLive se necessario.
+    socket.on('delete_channel', async function(channelId) {
+        console.log("app: delete_channel id=" + channelId);
+        var allChannels = await getAll();
+
+        // Guard: rifiuta se è l'unico canale rimasto
+        if (allChannels.length <= 1) {
+            socket.emit('delete_channel_error', 'Impossibile eliminare l\'unico canale');
+            return;
+        }
+
+        await deleteChannel(channelId);
+
+        // Se il canale eliminato era quello mostrato/live sul server, resetta allo stato sicuro
+        // trova il primo canale rimanente come fallback
+        if (channelShow === channelId) {
+            channelShow = allChannels.find(function(c) { return c.id !== channelId; }).id;
+        }
+        if (channelLive === channelId) {
+            channelLive = channelShow;
+        }
+
+        var updatedChannels = await getAll();
+        // Risposta solo al socket richiedente (non broadcast)
+        socket.emit('channel_deleted', { deletedId: channelId, channels: updatedChannels });
     });
 
 });  

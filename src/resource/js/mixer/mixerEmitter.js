@@ -1,10 +1,12 @@
 
 
 import { reinit } from "./rollupBundle/codeMirrorManager.js";
-import { 
+import {
     initializeChannel, showChannelLive,
     setChannelSelected, setLoadprev, prev,
-    autosave, channelSelected, loadprev} from "./mixerManager.js";
+    autosave, channelSelected, loadprev,
+    selectChannelLoad } from "./mixerManager.js";
+import { showToast } from "./toastManager.js";
 var socket = io();
 
 // TODO-6.2: Mostra/nasconde banner disconnessione
@@ -67,6 +69,30 @@ socket.on('get_all', function (variable) {
         autosave();
         emit('get_in_load');
     })
+});
+
+// Risposta a 'create_channel': ricarica la griglia canali e seleziona il nuovo canale.
+// Non usa il percorso socket 'get_all' per evitare il side effect autosave() toggle
+// che scatterebbe su tutti i client connessi.
+socket.on('channel_created', function(data) {
+    initializeChannel(data.channels).then(function() {
+        selectChannelLoad(data.id);
+    });
+});
+
+// Risposta a 'delete_channel': ricarica la griglia e seleziona il primo canale rimasto.
+// data.channels è già ordinato per sortOrder/id dal server (via getAll()).
+socket.on('channel_deleted', function(data) {
+    initializeChannel(data.channels).then(function() {
+        var nextChannel = data.channels[0]; // primo canale disponibile dopo la cancellazione
+        selectChannelLoad(nextChannel.id);
+    });
+});
+
+// Errore da 'delete_channel' (es: tentativo di cancellare l'unico canale).
+// Mostra un toast di errore con il messaggio inviato dal server.
+socket.on('delete_channel_error', function(message) {
+    showToast('⚠ ' + message, 'error');
 });
 
 export function emit(emitter, arg){
