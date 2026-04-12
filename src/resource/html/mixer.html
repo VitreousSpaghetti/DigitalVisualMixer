@@ -176,9 +176,18 @@
           </div>
 
           <div class="multychannel" title="change the channel workplace" id="function">
-            <div class="row spacingRow">
-              <div style="text-align:left" class=" col-12">
+            <div class="row spacingRow align-items-center">
+              <div class="col" style="text-align:left;">
                 Channels
+              </div>
+              <!-- Bottoni aggiungi/elimina canale — allineati a destra della label Channels -->
+              <div class="col-auto" style="padding-right:6px;">
+                <button class="btn btn-sm"
+                  style="padding:1px 7px;font-size:0.8em;background:#2e6e2e!important;border-color:#3a9a3a!important;color:#fff;"
+                  onclick="selectActionExec('addChannel')" title="Aggiungi nuovo canale vuoto">+</button>
+                <button class="btn btn-sm ms-1"
+                  style="padding:1px 7px;font-size:0.8em;background:#6e2e2e!important;border-color:#9a3a3a!important;color:#fff;"
+                  onclick="selectActionExec('deleteChannel')" title="Elimina canale in editing">🗑</button>
               </div>
             </div>
           </div>

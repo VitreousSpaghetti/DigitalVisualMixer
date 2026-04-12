@@ -1,5 +1,5 @@
 
-import { run,prev,save,saveAndRun,load,setLoadprev,selectChannelLoad,autosave,initMixer,nextRunLive,prevRunLive} from "./mixerManager.js";
+import { run,prev,save,saveAndRun,load,setLoadprev,selectChannelLoad,autosave,initMixer,nextRunLive,prevRunLive, addChannel, deleteCurrentChannel} from "./mixerManager.js";
 import { initMirror } from "./rollupBundle/codeMirrorManager.js";
 import { initMacro } from "./macroManager.js";
 import { initNav,showMacro } from "./navManager.js";
@@ -44,6 +44,10 @@ var selectActionExec = function (selectedAction) {
     // saveAndRun: salva sempre, va live solo se il codice è sintatticamente valido
     saveAndRun();
   }
+  // Crea un nuovo canale vuoto — risposta asincrona via socket 'channel_created'
+  if(selectedAction === 'addChannel') { addChannel(); }
+  // Mostra modale di conferma per cancellare il canale in editing
+  if(selectedAction === 'deleteChannel') { deleteCurrentChannel(); }
 } 
 
 
@@ -69,10 +73,13 @@ var init = function(){
   initMacro();
   initNav();
   inithydra();
-  window.selectChannelLoad =selectChannelLoad;
+  window.selectChannelLoad = selectChannelLoad;
   window.selectActionExec = selectActionExec;
   window.autosave = autosave;
   window.apiLink = apiLink;
+  // Esponi le azioni canale come globali per i bottoni onclick nell'HTML
+  window.addChannel = addChannel;
+  window.deleteCurrentChannel = deleteCurrentChannel;
 }
 
 init();

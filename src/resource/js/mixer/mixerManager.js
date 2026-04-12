@@ -4,6 +4,7 @@ import { reinit, getDoc } from "./rollupBundle/codeMirrorManager.js";
 import { emit } from "./mixerEmitter.js";
 import { showToast } from "./toastManager.js";
 import { refreshHydra } from "./hydraManager.js";
+import { ModalPanel } from "./modalManager.js";
 
 
 
@@ -395,6 +396,42 @@ function startTransitionProgress() {
             bar.style.width = '0%';
         }, dur + 100);
     });
+}
+
+/**
+ * Richiede al server la creazione di un nuovo canale vuoto.
+ * La risposta arriverà via socket 'channel_created' → mixerEmitter.js
+ * che chiamerà initializeChannel() + selectChannelLoad() senza toccare autosave.
+ */
+export function addChannel() {
+    emit('create_channel');
+}
+
+/**
+ * Mostra una modale di conferma per eliminare il canale attualmente in editing.
+ * Se il canale è in LIVE, aggiunge un avviso rosso rafforzato nel body della modale.
+ * La conferma emette 'delete_channel'; la risposta arriva via socket 'channel_deleted'.
+ */
+export function deleteCurrentChannel() {
+    // Trova il record del canale selezionato nell'array locale per mostrare il nome
+    var ch = channelMixer.find(function(c) { return c.id == channelSelected; });
+    var channelName = ch ? (ch.name || ('id: ' + channelSelected)) : ('id: ' + channelSelected);
+    var isLive = (channelSelected == channelLive);
+
+    var bodyHtml =
+        '<p>Eliminare il canale <strong>' + channelName + '</strong>?<br>' +
+        'Questa azione è <strong>irreversibile</strong>.</p>' +
+        (isLive
+            ? '<p style="color:#e74c3c;font-weight:bold;">⚠ Questo canale è attualmente in LIVE.</p>'
+            : '');
+
+    ModalPanel(
+        bodyHtml,
+        '🗑 Elimina canale',
+        'Annulla',
+        function() { emit('delete_channel', channelSelected); },
+        'Elimina'
+    );
 }
 
 export function initMixer(){

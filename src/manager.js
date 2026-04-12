@@ -194,6 +194,37 @@ export var reorderChannels = async function (orderedIds) {
     console.log('manager: reorderChannels → sortOrder aggiornato per', orderedIds.length, 'canali');
 };
 
+// --- GESTIONE CANALI: CREA / ELIMINA ---
+
+/**
+ * Crea un nuovo canale vuoto con id = max(id esistenti) + 1.
+ * L'ID è calcolato server-side su tutti i canali presenti nel DB al momento
+ * della chiamata, così da evitare race condition se più client creano
+ * canali in contemporanea.
+ * @returns {Promise<number>} l'ID del nuovo canale inserito
+ */
+export var createChannel = async function() {
+    var channels = await db.recordManager.findAll(ENTITY_CHANNEL);
+    // Calcola il massimo ID esistente; se non ci sono canali parte da -1 → newId=0
+    var maxId = channels.reduce(function(m, c) { return Math.max(m, c.id); }, -1);
+    var newId = maxId + 1;
+    await db.recordManager.insert(ENTITY_CHANNEL, { id: newId, name: '', code: '' });
+    await db.flush();
+    console.log('manager: createChannel → nuovo canale id=' + newId);
+    return newId;
+};
+
+/**
+ * Elimina un canale dal DB tramite il metodo deleteRecord di VitreousDataBase 0.2.0.
+ * API verificata: db.recordManager.deleteRecord(entityName, { id: channelId })
+ * @param {number} channelId - id del canale da eliminare
+ */
+export var deleteChannel = async function(channelId) {
+    await db.recordManager.deleteRecord(ENTITY_CHANNEL, { id: channelId });
+    await db.flush();
+    console.log('manager: deleteChannel → eliminato canale id=' + channelId);
+};
+
 // --- TRANSIZIONE GLOBALE ---
 
 // Restituisce la config transizione globale (record id=0).
