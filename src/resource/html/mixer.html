@@ -60,6 +60,10 @@
                     <li><a class="dropdown-item" onclick="window.open('./live','winname','directories=no,titlebar=no,toolbar=no,location=no,status=no,menubar=no,scrollbars=no,resizable=no,width=400,height=350')">⎋ Live</a></li>
                     <!-- TODO-5.3: rinominato da "Api" con target blank -->
                     <li><a class="dropdown-item" onclick="window.open(apiLink,'_blank')" target="_blank">Hydra API Docs ↗</a></li>
+                    <li><hr class="dropdown-divider" style="border-color:#555;"></li>
+                    <li><a class="dropdown-item" onclick="exportDb()">↓ Export DB</a></li>
+                    <li><a class="dropdown-item" onclick="document.getElementById('importDbInput').click()">↑ Import DB</a></li>
+                    <input type="file" id="importDbInput" accept=".json" style="display:none" onchange="importDb(event)">
                   </ul>
                 </li>
                 <!--<li class="nav-item">
@@ -223,6 +227,33 @@
         </div>
       </div>
       <script id="script" type="text/javascript">
+      // Scarica db.json come file attachment tramite redirect HTTP
+      function exportDb() {
+          window.location.href = '/api/db/export';
+      }
+
+      // Carica un file JSON dal disco, lo valida e lo invia al server per sostituire il DB.
+      // Dopo import riuscito la pagina si ricarica per aggiornare i canali.
+      async function importDb(event) {
+          const file = event.target.files[0];
+          if (!file) return;
+          // Reset input per permettere ri-selezione dello stesso file in futuro
+          event.target.value = '';
+          const text = await file.text();
+          let data;
+          try { data = JSON.parse(text); } catch(e) { alert('File JSON non valido'); return; }
+          const res = await fetch('/api/db/import', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(data)
+          });
+          if (res.ok) {
+              location.reload();
+          } else {
+              const err = await res.json().catch(() => ({}));
+              alert('Errore import: ' + (err.error || res.status));
+          }
+      }
       </script>
     </div>
 

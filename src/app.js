@@ -5,7 +5,7 @@ import fs from 'fs';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { searchChannel, saveChannel, getAll, getTransition, setTransition, reorderChannels }  from './manager.js'
+import { searchChannel, saveChannel, getAll, getTransition, setTransition, reorderChannels, reloadDb }  from './manager.js'
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { nodeResolve } from '@rollup/plugin-node-resolve';
@@ -20,7 +20,15 @@ export default {
   };
 
 //INIT ENV VAR
-const app = express();  
+const app = express();
+
+// Middleware JSON per endpoint REST (import DB: thumbnail base64 → limit 50mb)
+// DEVE stare prima di tutte le route
+app.use(express.json({ limit: '50mb' }));
+
+// Percorso del database — usato da export/import
+const DB_PATH = './src/resource/db.json';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const http = createServer(app);
@@ -123,6 +131,40 @@ filesJsRollupBundle.forEach(file => {
     app.get("/src/resource/js/rollupBundle/"+file, (request, response) => { 
         response.sendFile(file , { root: './rollupBundle/' }) 
     });  
+});
+
+// --- REST API: export / import DB ---
+
+/**
+ * GET /api/db/export
+ * Scarica db.json come file attachment.
+ * Legge direttamente dal disco per garantire coerenza con l'ultimo flush.
+ */
+app.get('/api/db/export', (req, res) => {
+    const raw = fs.readFileSync(DB_PATH, 'utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="db.json"');
+    res.setHeader('Content-Type', 'application/json');
+    res.send(raw);
+});
+
+/**
+ * POST /api/db/import
+ * Riceve un JSON, valida struttura minima, sostituisce db.json e ricarica l'istanza DB.
+ * Body max 50mb (configurato in express.json middleware) per supportare thumbnail base64.
+ */
+app.post('/api/db/import', async (req, res) => {
+    const newData = req.body;
+    // Validazione struttura minima obbligatoria per VitreousDataBase
+    if (!newData || !newData.entitiesConfiguration || !newData.entities) {
+        return res.status(400).json({ error: 'Struttura db non valida: mancano entitiesConfiguration o entities' });
+    }
+    try {
+        await reloadDb(newData);
+        res.json({ ok: true });
+    } catch (e) {
+        console.error('app: import DB fallito', e);
+        res.status(500).json({ error: 'Errore interno durante il reload del DB: ' + e.message });
+    }
 });
 
 //START LISTENING FOR CHANNEL CHANGE

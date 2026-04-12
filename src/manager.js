@@ -47,7 +47,8 @@ if (existsSync(DB_PATH)) {
     } catch (e) {}
 }
 
-const db = await Database.create(DB_PATH, { eager: true });
+// let (non const) per permettere la ri-assegnazione in reloadDb()
+let db = await Database.create(DB_PATH, { eager: true });
 
 const existingEntities = await db.entityManager.listEntities();
 
@@ -105,6 +106,22 @@ if (savedChannels.length > 0) {
     }
     await db.flush();
 }
+
+// --- RELOAD DB (usato da POST /api/db/import) ---
+
+/**
+ * Sostituisce il db.json su disco con newData e ricrea l'istanza VitreousDataBase.
+ * Necessario perché il modulo usa top-level await: il riferimento `db` deve essere
+ * aggiornato in-process senza riavvio del server.
+ * @param {object} newData - JSON parsato del nuovo db.json (deve avere entitiesConfiguration + entities)
+ */
+export var reloadDb = async function(newData) {
+    // Scrive il nuovo contenuto su disco
+    writeFileSync(DB_PATH, JSON.stringify(newData, null, 2), 'utf-8');
+    // Ricrea l'istanza — sovrascrive il riferimento al modulo
+    db = await Database.create(DB_PATH, { eager: true });
+    console.log('manager: reloadDb completato — DB ricaricato dal nuovo file');
+};
 
 // --- CANALI ---
 
