@@ -1,9 +1,13 @@
 TODO--------------
+bug che se sposto con drag and drop la fonte live non me la segna dal mixer
+bug thumbnail
+sistemare readme
+introdurre una demo
 preparare una pagina per le macro ( scalabile: idea di memorizzare macro )
-tasto per drag and drop per video o foto da caricare nel codice
+memorizzare video da poi usare come campionatori
 settaggio di source audio interna al pc
-init db void
 export db e import db
+init db se non esiste il file
 DONE--------------
 ipotizzare console di error? o quantomeno un pop-up con errore
 sistemare ctrl+space

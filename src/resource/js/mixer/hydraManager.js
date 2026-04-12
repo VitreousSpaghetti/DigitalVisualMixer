@@ -3,13 +3,18 @@ var hydraMain;
 var sepped = 1;
 var bpm = 30;
 function refreshHydra(jsx) {
+    // Rimuovi pannello errore precedente se presente
+    var errPanel = document.getElementById('hydraErrorPanel');
+    if (errPanel) errPanel.style.display = 'none';
 
     if (document.getElementById('chalfunction')) {
         document.getElementById('chalfunction').remove();
     }
     var s = document.createElement('script');
     s.setAttribute("id", "chalfunction");
-    s.textContent = jsx;//inne
+    s.textContent = jsx;
+    // TODO-7.2: cattura errori di sintassi tramite onerror sul document
+    s.setAttribute('type', 'text/javascript');
     document.body.appendChild(s);
 }
 
@@ -44,4 +49,15 @@ function inithydra() {
     window.hydraMain = hydraMain;
     window.resetAudioAndSpeed = resetAudioAndSpeed;
 }
+// TODO-7.2: intercetta errori runtime Hydra e li mostra nel pannello errore
+window.addEventListener('error', function(event) {
+    // Filtra solo errori provenienti da script Hydra (chalfunction)
+    var errPanel = document.getElementById('hydraErrorPanel');
+    if (!errPanel) return;
+    errPanel.textContent = '⚠ Hydra error: ' + (event.message || 'errore sconosciuto');
+    errPanel.style.display = 'block';
+    // Auto-hide dopo 5 secondi
+    setTimeout(function() { errPanel.style.display = 'none'; }, 5000);
+});
+
 export { inithydra, refreshHydra, refreshHydraWithTransiction, resetAudioAndSpeed }

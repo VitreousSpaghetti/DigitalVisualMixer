@@ -7,13 +7,70 @@ import { refreshHydra } from "./hydraManager.js";
 
 
 
-var channelMixer = []; 
+var channelMixer = [];
 var channelLive= 0;
-export var isautosave = false; 
+export var isautosave = false;
 
 var transictions = [];
 var transictionSelected =0;
 export var isTransictionSelected= true;
+
+// TODO-2.5: variabili di stato drag & drop
+var dragSrcId = null;
+
+// Gestori eventi HTML5 Drag API per riordinamento canali
+function onDragStart(e) {
+    dragSrcId = this.id;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', this.id);
+    this.style.opacity = '0.4';
+}
+
+function onDragEnd(e) {
+    this.style.opacity = '1';
+    // Rimuovi evidenziazione drag-over da tutti i bottoni
+    document.querySelectorAll('.channel-btn').forEach(function(btn) {
+        btn.classList.remove('drag-over');
+    });
+}
+
+function onDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    return false;
+}
+
+function onDragEnter(e) {
+    this.classList.add('drag-over');
+}
+
+function onDragLeave(e) {
+    this.classList.remove('drag-over');
+}
+
+function onDrop(e) {
+    e.stopPropagation();
+    e.preventDefault();
+    this.classList.remove('drag-over');
+    if (dragSrcId === this.id) return;
+
+    // Trova le posizioni nell'array channelMixer
+    var srcIdx = channelMixer.findIndex(function(c) { return String(c.id) === String(dragSrcId); });
+    var dstIdx = channelMixer.findIndex(function(c) { return String(c.id) === this.id; }.bind(this));
+    if (srcIdx === -1 || dstIdx === -1) return;
+
+    // Sposta l'elemento nell'array (riordino locale immediato)
+    var moved = channelMixer.splice(srcIdx, 1)[0];
+    channelMixer.splice(dstIdx, 0, moved);
+
+    // Ri-renderizza la griglia canali con il nuovo ordine
+    initializeChannel(channelMixer);
+
+    // Persiste il nuovo ordine sul server
+    emit('save_order', channelMixer.map(function(c) { return c.id; }));
+    console.log("Drag: save_order emitted");
+    return false;
+}
 
 export var loadprev=false;
 export var channelSelected= 0;
@@ -67,23 +124,25 @@ export function initializeChannel(variable){
         btn.setAttribute('aria-label', 'Channel: ' + element.name); // TODO-6.3
       }
 
-      // TODO-2.3: un bottone non può avere sia tooltip che popover.
-      // Se esiste thumbnail → popover con preview immagine; altrimenti tooltip semplice (TODO-2.2).
+      // Tooltip uniforme (nome canale) per tutti i bottoni con placement 'left'.
+      // Il popover thumbnail è rimosso: Bootstrap 5 sanitizza i data: URL (img src strippato)
+      // e sia popover che tooltip con 'top' escono da #multychannel (overflow:hidden)
+      // finendo nella search bar. 'left' resta nel panel col-4.
+      // Il thumbnail è conservato in data-thumbnail per uso futuro (es. modal dettaglio).
       if (element.thumbnail) {
-        btn.setAttribute('data-bs-toggle', 'popover');
-        btn.setAttribute('data-bs-trigger', 'hover');
-        btn.setAttribute('data-bs-placement', 'left');
-        btn.setAttribute('data-bs-html', 'true');
-        btn.setAttribute('data-bs-content', '<img src="' + element.thumbnail + '" style="width:120px;height:auto;display:block;">');
-        btn.setAttribute('data-thumbnail', element.thumbnail); // usato anche da dragManager se necessario
-      } else {
-        // TODO-2.2: Bootstrap tooltip (solo canali senza thumbnail)
-        btn.setAttribute('data-bs-toggle', 'tooltip');
-        btn.setAttribute('data-bs-placement', 'top');
+        btn.setAttribute('data-thumbnail', element.thumbnail);
       }
+      btn.setAttribute('data-bs-toggle', 'tooltip');
+      btn.setAttribute('data-bs-placement', 'left');
 
-      // TODO-2.5: drag & drop attributi (gestione eventi aggiunta in dragManager)
+      // TODO-2.5: drag & drop — abilita draggable e registra tutti i listener HTML5 Drag API
       btn.setAttribute('draggable', 'true');
+      btn.addEventListener('dragstart',  onDragStart);
+      btn.addEventListener('dragend',    onDragEnd);
+      btn.addEventListener('dragover',   onDragOver);
+      btn.addEventListener('dragenter',  onDragEnter);
+      btn.addEventListener('dragleave',  onDragLeave);
+      btn.addEventListener('drop',       onDrop);
 
       col.appendChild(btn);
       row.appendChild(col);
@@ -93,14 +152,9 @@ export function initializeChannel(variable){
     var selEl = document.getElementById(channelSelected + "");
     if (selEl) selEl.classList.add("selectedChannel");
 
-    // TODO-2.2: inizializza Bootstrap tooltip su tutti i bottoni senza thumbnail
+    // Inizializza tooltip su tutti i bottoni canale (ora uniformi, niente più popover)
     document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
       new bootstrap.Tooltip(el);
-    });
-
-    // TODO-2.3: inizializza Bootstrap popover con thumbnail preview
-    document.querySelectorAll('[data-bs-toggle="popover"]').forEach(function(el) {
-      new bootstrap.Popover(el);
     });
 
     updateEditingLabel(channelSelected); // TODO-3.1

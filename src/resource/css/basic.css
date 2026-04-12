@@ -16,6 +16,11 @@
     aspect-ratio: auto 1920 / 1080;
 }
 
+/* overflow-x su html+body insieme: solo su body causa il browser a trasferire l'overflow a html, generando una scrollbar verticale */
+html {
+    overflow-x: hidden;
+}
+
 body {
     background: #000;
     margin: 0px;
@@ -24,6 +29,7 @@ body {
     height: 100%;
     color: #fff;
     line-height: 1.4;
+    overflow-x: hidden;
 }
 
 button {
@@ -255,6 +261,29 @@ a.dropdown-item{
     font-size: 0.82em;
 }
 .channel-search::placeholder { color: #666; }
+
+/* TODO-2.5: feedback drag & drop canali */
+.channel-btn[draggable="true"] {
+    cursor: grab;
+}
+.channel-btn.drag-over {
+    outline: 2px dashed #ff6b35 !important;
+    outline-offset: 2px;
+    background: #2a1a10 !important;
+}
+
+/* TODO-7.2: pannello errori Hydra */
+.hydra-error-panel {
+    background: #3a0000;
+    color: #ff6b6b;
+    font-family: monospace;
+    font-size: 0.8em;
+    padding: 6px 10px;
+    border-left: 3px solid #ff1744;
+    margin: 4px 0;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
 
 /* TODO-1.4: progress bar transizione */
 .trans-progress-bar {

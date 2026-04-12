@@ -29,6 +29,10 @@ if(!process || !process.env || !process.env.TOKEN){
     dotenv.config();
 }
 var port = process.env.PORT || 8080;
+// TODO-7.3: numero massimo di canali configurabile via env var MAX_CHANNELS
+// Il numero effettivo di canali è determinato da db.json (getAll).
+// Questo valore è documentativo — i canali sono aggiunti/rimossi direttamente da db.json o via API del server.
+var maxChannels = parseInt(process.env.MAX_CHANNELS, 10) || 36;
 var token = process.env.TOKEN || '';
 app.use(express.static(__dirname + '/dist/'));
 
