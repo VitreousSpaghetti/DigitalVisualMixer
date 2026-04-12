@@ -86,6 +86,12 @@ export function setLoadprev(variable){
 export function initializeChannel(variable){
   const firstInitRetrive = new Promise((resolve, reject) => {
     var container = document.getElementById("multychannel");
+    // Dispone i tooltip Bootstrap esistenti prima di distruggere i nodi DOM —
+    // senza dispose() le istanze Popper restano nel body come tooltip orfani
+    container.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+        var t = bootstrap.Tooltip.getInstance(el);
+        if (t) t.dispose();
+    });
     container.innerHTML = "";
     channelMixer = variable;
 
@@ -151,6 +157,10 @@ export function initializeChannel(variable){
     // Evidenzia canale selezionato
     var selEl = document.getElementById(channelSelected + "");
     if (selEl) selEl.classList.add("selectedChannel");
+
+    // Ripristina liveChannel e badge dopo re-render (drag&drop o primo caricamento) — bug fix TODO-2.5
+    // showChannelLive aggiorna sia la classe CSS che il testo del liveBadge in navbar
+    showChannelLive(channelLive);
 
     // Inizializza tooltip su tutti i bottoni canale (ora uniformi, niente più popover)
     document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
@@ -231,8 +241,27 @@ export function save() {
     // canvas può lanciare SecurityError in alcuni contesti (es. cross-origin)
   }
   var channel = { id: channelSelected, code: jsx, name: name, thumbnail: thumbnail };
-  document.getElementById(channelSelected).innerText = name;
-  document.getElementById(channelSelected).title = name;
+
+  // Aggiorna il bottone nel DOM sincronizzando testo e classe empty-channel
+  var btn = document.getElementById(String(channelSelected));
+  if (btn) {
+    var nameStr = String(name);
+    var isEmpty = !nameStr || nameStr === String(channelSelected);
+    if (isEmpty) {
+      btn.textContent = '— empty —';
+      btn.classList.add('empty-channel');
+      btn.title = 'Slot vuoto (id: ' + channelSelected + ')';
+    } else {
+      btn.textContent = nameStr;
+      btn.classList.remove('empty-channel');
+      btn.title = nameStr;
+    }
+  }
+
+  // Aggiorna channelMixer in memoria per coerenza con il prossimo re-render (es. drag&drop)
+  var entry = channelMixer.find(function(c) { return c.id == channelSelected; });
+  if (entry) entry.name = String(name);
+
   emit('save_channel', channel);
   showToast('✓ Saved: ' + name);
   console.log("Save channel " + channel.id);
