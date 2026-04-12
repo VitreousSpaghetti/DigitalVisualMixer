@@ -131,6 +131,13 @@ div.height3 {
     overflow-y: auto;
 }
 
+/* TODO-3.4: editor altezza dinamica per evitare double-scroll */
+.height90 #codejs {
+    height: calc(97vh - 3% - 70px);
+    max-height: none;
+    overflow-y: auto;
+}
+
 .ͼd {
     color: #00fb97;
 }
@@ -169,4 +176,94 @@ a.dropdown-item{
 
 .dropdown-menu>li:hover>.dropdown-submenu {
     display: block;
+}
+
+/* TODO-6.2: banner disconnessione */
+#disconnectBanner {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 0.9em;
+    letter-spacing: 0.5px;
+}
+
+/* TODO-2.1: canali vuoti */
+.empty-channel {
+    background: #1a1a1a !important;
+    border: 2px dashed #444 !important;
+    color: #555 !important;
+    font-style: italic;
+}
+.empty-channel:hover {
+    background: #252525 !important;
+    border-color: #666 !important;
+}
+
+/* TODO-1.1: badge canale live in navbar */
+.live-badge {
+    color: #ff1744;
+    font-weight: bold;
+    font-size: 0.85em;
+    padding: 2px 8px;
+    animation: pulse-live 1.5s ease-in-out infinite;
+    white-space: nowrap;
+}
+@keyframes pulse-live {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+/* TODO-1.3: indicatore autosave navbar */
+.as-indicator {
+    font-size: 0.75em;
+    font-weight: bold;
+    padding: 2px 6px;
+    margin-left: 6px;
+    border-radius: 3px;
+    cursor: default;
+}
+.as-on  { color: #00e676; }
+.as-off { color: #555; }
+
+/* TODO-3.1: label canale in editing */
+.editing-label {
+    background: #1e1e2e;
+    color: #ababab;
+    font-size: 0.78em;
+    padding: 3px 10px;
+    border-bottom: 1px solid #333;
+    font-style: italic;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* TODO-3.3: Save and Run in evidenza come operazione live */
+.saverun-item {
+    color: #ff6b35 !important;
+    font-weight: bold;
+}
+.saverun-item:hover {
+    color: #ff3d00 !important;
+    background-color: #2a1a10 !important;
+}
+
+/* TODO-2.4: search box canali */
+.channel-search {
+    background: #2a2a2a !important;
+    color: #ccc !important;
+    border: 1px solid #444 !important;
+    border-radius: 3px !important;
+    font-size: 0.82em;
+}
+.channel-search::placeholder { color: #666; }
+
+/* TODO-1.4: progress bar transizione */
+.trans-progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 3px;
+    width: 0%;
+    background: #ff1744;
+    z-index: 10000;
+    pointer-events: none;
 }

@@ -5,7 +5,17 @@ import {
     initializeChannel, showChannelLive,
     setChannelSelected, setLoadprev, prev,
     autosave, channelSelected, loadprev} from "./mixerManager.js";
-var socket = io(); 
+var socket = io();
+
+// TODO-6.2: Mostra/nasconde banner disconnessione
+socket.on('disconnect', () => {
+    var b = document.getElementById('disconnectBanner');
+    if (b) b.style.display = 'flex';
+});
+socket.on('connect', () => {
+    var b = document.getElementById('disconnectBanner');
+    if (b) b.style.display = 'none';
+});
 
 //RETRIVE CHANNEL IN LIVE
 socket.on('get_in_load', function (variable) {
@@ -13,7 +23,7 @@ socket.on('get_in_load', function (variable) {
     if (element)
         element.classList.add("liveChannel");
     if(channelSelected)
-        setChannelSelected(  parseInt(channel));
+        setChannelSelected(parseInt(variable)); // TODO-6.1: fix bug — era `channel` (undefined), ora `variable` (parametro del callback)
 });
 
 

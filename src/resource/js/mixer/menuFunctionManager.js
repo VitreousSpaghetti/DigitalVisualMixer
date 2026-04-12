@@ -267,8 +267,9 @@ function initFunction() {
   functionJson.forEach(element => {
     if (element) {
 
+      // TODO-5.1: aggiunto role="menuitem" e tabindex="0" per accessibilità tastiera
       html += `<li>
-        <a class="dropdown-item" href="#">
+        <a class="dropdown-item" href="#" role="menuitem" tabindex="0">
         `+element.title+` &raquo;
         </a>
         <ul class="dropdown-menu dropdown-submenu">`;
@@ -276,7 +277,7 @@ function initFunction() {
         if (element) {
           html += `
             <li>
-              <a class="dropdown-item" onclick="sourcefunction('`+element.id+`')">`+element.title+`</a>
+              <a class="dropdown-item" role="menuitem" tabindex="0" onclick="sourcefunction('`+element.id+`')">`+element.title+`</a>
             </li>`;
         }
       });

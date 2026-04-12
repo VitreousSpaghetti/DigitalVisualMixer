@@ -34,11 +34,33 @@ var selectActionExec = function (selectedAction) {
     load(); 
   }
   if(selectedAction === 'saverun'){
+    // TODO-3.3: conferma se il canale selezionato è già quello live (evita errori accidentali)
+    var currentLiveEl = document.querySelector('.liveChannel');
+    var selectedEl = document.querySelector('.selectedChannel');
+    if (currentLiveEl && selectedEl && currentLiveEl.id === selectedEl.id) {
+      if (!confirm('Questo canale è già LIVE. Mandare in live la nuova versione?')) return;
+    }
     save();
     run();
   }
 } 
 
+
+// TODO-4.2: mostra/nasconde il canvas di preview, salva preferenza in localStorage
+var toggleCanvas = function() {
+    var tv = document.querySelector('.tv');
+    var btn = document.getElementById('canvasToggle');
+    if (!tv) return;
+    var isHidden = tv.style.display === 'none';
+    tv.style.display = isHidden ? '' : 'none';
+    if (btn) btn.textContent = isHidden ? 'Hide Preview' : 'Show Preview';
+    localStorage.setItem('canvasHidden', isHidden ? 'false' : 'true');
+};
+window.toggleCanvas = toggleCanvas;
+// Ripristina preferenza al caricamento
+if (localStorage.getItem('canvasHidden') === 'true') {
+    toggleCanvas();
+}
 
 var init = function(){
   initMixer();

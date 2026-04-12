@@ -27,7 +27,25 @@
         <meta property="og:site_name" content="A PROJECT BY EMILIANO AKA VITREOUS  @Vitreous_spaghetti"> 
         
     </head> 
-    <body  >  
+    <body  >
+        <!-- TODO-4.3: adatta il canvas al viewport con ?fit=cover o ?fit=contain -->
+        <script>
+          document.addEventListener('DOMContentLoaded', function() {
+            var fit = new URLSearchParams(window.location.search).get('fit') || 'contain';
+            var canvas = document.getElementById('hydra-canvas');
+            if (canvas) {
+              canvas.style.objectFit = fit;
+              // cover rimuove le bande nere espandendo il canvas; contain (default) mantiene aspect ratio
+              if (fit === 'cover') {
+                canvas.style.width = '100vw';
+                canvas.style.height = '100vh';
+                canvas.style.position = 'fixed';
+                canvas.style.top = '0';
+                canvas.style.left = '0';
+              }
+            }
+          });
+        </script>
         <div id="hydra-ui">
             <div style="width:100%;height:100%;">
                 <canvas id="hydra-canvas" style="imageRendering:pixelated; width:100%;height:100%;aspect-ratio: auto 1920 / 929;"> </canvas>

@@ -1,4 +1,11 @@
-/** MANEGGIA I DATI CON VITREOUSDATABASE */
+/** MANEGGIA I DATI CON VITREOUSDATABASE 0.2.0 (npm ^0.2.0)
+ *
+ * Aggiornato da 0.1.0 (github:VitreousSpaghetti/VitreousDataBase) a 0.2.0 (npm).
+ * Novità 0.2.0 usate:
+ *  - entityManager.getEntity(name)     — legge la config di un'entità esistente
+ *  - entityManager.addField(e, field)  — aggiunge campo a schema già esistente (migrazione live)
+ *  - recordManager.update() e tutti i metodi accettano options opzionale (backwards compatible)
+ */
 import { createRequire } from 'module';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 
@@ -44,16 +51,30 @@ const db = await Database.create(DB_PATH, { eager: true });
 
 const existingEntities = await db.entityManager.listEntities();
 
-// Crea entità channel se assente (senza campi transizione)
+// Crea entità channel se assente.
+// Schema include thumbnail (TODO-2.3) e sortOrder (TODO-2.5) fin dal primo avvio.
 if (!existingEntities.includes(ENTITY_CHANNEL)) {
     await db.entityManager.createEntity(ENTITY_CHANNEL, {
         type: 'table',
-        values: ['id', 'name', 'code'],
+        values: ['id', 'name', 'code', 'thumbnail', 'sortOrder'],
         id: ['id'],
         notnullable: [],
         unique: [],
         nested: []
     });
+} else {
+    // --- MIGRAZIONE SCHEMA (VitreousDataBase 0.2.0 addField API) ---
+    // Se il DB esiste già senza thumbnail/sortOrder, li aggiunge allo schema
+    // senza perdere i record esistenti. getEntity() e addField() sono nuove in 0.2.0.
+    const existingChannelCfg = await db.entityManager.getEntity(ENTITY_CHANNEL);
+    if (!existingChannelCfg.values.includes('thumbnail')) {
+        await db.entityManager.addField(ENTITY_CHANNEL, 'thumbnail');
+        console.log('manager: migrazione schema → aggiunto campo thumbnail');
+    }
+    if (!existingChannelCfg.values.includes('sortOrder')) {
+        await db.entityManager.addField(ENTITY_CHANNEL, 'sortOrder');
+        console.log('manager: migrazione schema → aggiunto campo sortOrder');
+    }
 }
 
 // Crea entità transition se assente (record globale unico id=0)
@@ -87,6 +108,10 @@ if (savedChannels.length > 0) {
 
 // --- CANALI ---
 
+/**
+ * Restituisce tutti i canali ordinati per sortOrder (se presente), poi per id.
+ * sortOrder viene impostato da reorderChannels() dopo il drag&drop (TODO-2.5).
+ */
 export var getAll = async function () {
     var channels = await db.recordManager.findAll(ENTITY_CHANNEL);
     if (!channels || channels.length === 0) {
@@ -94,17 +119,26 @@ export var getAll = async function () {
         await db.flush();
         channels = await db.recordManager.findAll(ENTITY_CHANNEL);
     }
-    return channels.sort((a, b) => a.id < b.id ? -1 : 0);
+    // Ordina per sortOrder se disponibile, fallback su id (TODO-2.5)
+    return channels.sort(function(a, b) {
+        var sa = (a.sortOrder !== undefined && a.sortOrder !== null) ? a.sortOrder : a.id;
+        var sb = (b.sortOrder !== undefined && b.sortOrder !== null) ? b.sortOrder : b.id;
+        return sa < sb ? -1 : sa > sb ? 1 : 0;
+    });
 };
 
-// Salva o aggiorna un canale (upsert).
-// Aggiornamento parziale: include solo i campi definiti nel payload (code/name).
+/**
+ * Salva o aggiorna un canale (upsert).
+ * Aggiornamento parziale: include solo i campi definiti nel payload (code/name/thumbnail).
+ */
 export var saveChannel = async function (channelToSave) {
     var existing = await db.recordManager.findByIdSingle(ENTITY_CHANNEL, channelToSave.id);
     if (existing) {
         var updateFields = {};
         if (channelToSave.name !== undefined) updateFields.name = channelToSave.name;
         if (channelToSave.code !== undefined) updateFields.code = channelToSave.code;
+        // TODO-2.3: persiste thumbnail se presente nel payload (null è valido per reset)
+        if (channelToSave.thumbnail !== undefined) updateFields.thumbnail = channelToSave.thumbnail;
         await db.recordManager.update(ENTITY_CHANNEL, { id: channelToSave.id }, updateFields);
     } else {
         await db.recordManager.insert(ENTITY_CHANNEL, {
@@ -124,6 +158,23 @@ export var searchChannel = async function (channelID) {
         await db.flush();
     }
     return channel;
+};
+
+/**
+ * Riordina i canali impostando il campo sortOrder in base all'array di ID ricevuto.
+ * Chiamata dal socket event 'save_order' dopo il drag&drop nella UI (TODO-2.5).
+ * Usa VitreousDataBase 0.2.0 recordManager.update() standard — nessuna API speciale richiesta.
+ */
+export var reorderChannels = async function (orderedIds) {
+    for (var i = 0; i < orderedIds.length; i++) {
+        try {
+            await db.recordManager.update(ENTITY_CHANNEL, { id: orderedIds[i] }, { sortOrder: i });
+        } catch (e) {
+            // Ignora RecordNotFoundError su ID non presenti nel DB
+        }
+    }
+    await db.flush();
+    console.log('manager: reorderChannels → sortOrder aggiornato per', orderedIds.length, 'canali');
 };
 
 // --- TRANSIZIONE GLOBALE ---

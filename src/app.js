@@ -5,7 +5,7 @@ import fs from 'fs';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { searchChannel, saveChannel, getAll, getTransition, setTransition }  from './manager.js'
+import { searchChannel, saveChannel, getAll, getTransition, setTransition, reorderChannels }  from './manager.js'
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { nodeResolve } from '@rollup/plugin-node-resolve';
@@ -199,6 +199,13 @@ io.sockets.on('connection', async function(socket) {
         console.log("app: find_channel "+variable);
         var channel = await searchChannel(variable);
         socket.emit('find_channel', channel);
+    });
+
+    // TODO-2.5: riceve array di ID ordinati dopo drag&drop e persiste il nuovo ordine
+    // Usa reorderChannels() da manager.js che imposta il campo sortOrder (VitreousDataBase 0.2.0)
+    socket.on('save_order', async function(orderedIds) {
+        console.log("app: save_order ricevuto per", orderedIds.length, "canali");
+        await reorderChannels(orderedIds);
     });
 
 });  

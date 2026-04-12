@@ -29,28 +29,57 @@
         <meta property="og:site_name" content="A PROJECT BY EMILIANO AKA VITREOUS  @Vitreous_spaghetti"> 
         
     </head> 
-    <body  >  
-        <div class="container-fluid">
-            <div class="row">
-                <div style="text-align:center" class=" col-12">
-                    <div class="VitreousWelcome">
-                        Welcome, this is a digital mixer that uses <a href="https://hydra.ojack.xyz/" target="_blank">hydra</a>.<br>
-                        Under "live source" you will find the channel the mixer is running on.<br>
-                        The mixer consists of several channels that can store the code in the left section of the page.
-                    </div> 
-                </div>
-            </div>
-        </div>
-        <div class="container-fluid">
-            <div class="row"> 
+    <body  >
+        <!-- TODO-5.4: about page espansa con shortcut, architettura, route -->
+        <div class="container-fluid" style="max-width:860px;margin:40px auto;">
+          <div class="VitreousWelcome" style="font-size:1em;">
+            <h2 style="color:#fff;">Digital Visual Mixer — Vitreous</h2>
+            <p>Web mixer live per performance visive basato su <a href="https://hydra.ojack.xyz/" target="_blank">Hydra</a>.
+            Autore: <a href="https://twitter.com/vitreous_spaghetti" target="_blank">Emiliano Brazzoli @vitreous_spaghetti</a></p>
 
-                <div style="text-align:center" class=" col-3">
-                    <button style="width:90%" id="3" onclick="location.href='./mixer'" class="btn btn-primary"> GO TO MIXER </button>
-                </div> 
-                <div style="text-align:center" class=" col-3">
-                    <button style="width:90%" id="4"  onclick="window.open('./live','winname','directories=no,titlebar=no,toolbar=no,location=no,status=no,menubar=no,scrollbars=no,resizable=no,width=400,height=350')" class="btn btn-primary"> GO TO LIVE SOURCE</button>
-                </div>
-            </div>
+            <hr style="border-color:#555;">
+
+            <h4 style="color:#ccc;">Shortcut da tastiera</h4>
+            <table style="width:100%;border-collapse:collapse;color:#ccc;font-size:0.9em;">
+              <tr><td style="padding:4px 8px;"><kbd>Ctrl + Enter</kbd></td><td>Preview locale (non in live)</td></tr>
+              <tr><td style="padding:4px 8px;"><kbd>Ctrl + ↑</kbd></td><td>Salva il canale corrente</td></tr>
+              <tr><td style="padding:4px 8px;"><kbd>Ctrl + ↓</kbd></td><td>Salva e manda in live</td></tr>
+              <tr><td style="padding:4px 8px;"><kbd>Ctrl + ←</kbd></td><td>Canale live precedente</td></tr>
+              <tr><td style="padding:4px 8px;"><kbd>Ctrl + →</kbd></td><td>Canale live successivo</td></tr>
+            </table>
+
+            <hr style="border-color:#555;">
+
+            <h4 style="color:#ccc;">Architettura</h4>
+            <pre style="color:#9c9;font-size:0.8em;background:#111;padding:10px;border-radius:4px;">
+Browser (Mixer :8080/)          Browser (/live)
+  CodeMirror editor           Hydra canvas fullscreen
+  Channel grid                    |
+        |                         |
+        └──── Socket.IO ──────────┘
+                  |
+            Node.js server
+            Express :8080
+            db.json (VitreousDataBase)
+            </pre>
+
+            <hr style="border-color:#555;">
+
+            <h4 style="color:#ccc;">Route disponibili</h4>
+            <ul style="color:#ccc;font-size:0.9em;">
+              <li><code>/</code> oppure <code>/mixer</code> — Pannello di controllo</li>
+              <li><code>/live</code> — Output proiettore/schermo esterno (<code>?fit=cover</code> per fullscreen senza bande)</li>
+              <li><code>/about</code> — Questa pagina</li>
+            </ul>
+
+            <hr style="border-color:#555;">
+
+            <h4 style="color:#ccc;">Link</h4>
+            <ul style="color:#ccc;">
+              <li><a href="https://hydra.ojack.xyz/api/" target="_blank">Hydra API Docs ↗</a></li>
+              <li><a href="./mixer" class="btn btn-sm btn-primary mt-2">→ Vai al Mixer</a></li>
+            </ul>
+          </div>
         </div>
         <div id="hydra-ui" style="    z-index: -100;">
             <div style="width:100%;height:100%;">

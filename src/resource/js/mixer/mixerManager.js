@@ -2,6 +2,7 @@
 
 import { reinit, getDoc } from "./rollupBundle/codeMirrorManager.js";
 import { emit } from "./mixerEmitter.js";
+import { showToast } from "./toastManager.js";
 import { refreshHydra } from "./hydraManager.js";
 
 
@@ -27,37 +28,85 @@ export function setLoadprev(variable){
 //FUNCTION INIT TO CALL AT THE START OF THE PAGE
 export function initializeChannel(variable){
   const firstInitRetrive = new Promise((resolve, reject) => {
-    document.getElementById("multychannel").innerHTML ="";
+    var container = document.getElementById("multychannel");
+    container.innerHTML = "";
     channelMixer = variable;
-    var html= "<div class=\"row spacingRowa\" >";
-    var i=1;
+
+    var row = null;
     for (let index = 0; index < channelMixer.length; index++) {
       const element = channelMixer[index];
-      html +=
-      "<div style=\"text-align:center\" class=\" col-3 \"  >"+
-      "<button style=\"width:90%;text-overflow: ellipsis;white-space: nowrap;overflow: hidden;\" "+
-      "id=\""+element.id+"\" onclick=\"selectChannelLoad('"+element.id+"')\" class=\"btn btn-primary\" title=\""+element.name+"\" >"+
-        element.name+
-      "</button>"+
-      "</div>"
-      if( (i>0 && i % 4 == 0 )|| i === channelMixer.length ){
-        html +=" </div>"
+
+      // Ogni 4 canali inizia una nuova riga Bootstrap
+      if (index % 4 === 0) {
+        row = document.createElement('div');
+        row.className = 'row spacingRowa';
+        container.appendChild(row);
       }
-      if( (i>0 && i % 4 == 0 )&& i !== channelMixer.length ){
-        html +=" <div class=\"row spacingRowa\" >"
+
+      // Colonna
+      var col = document.createElement('div');
+      col.style.textAlign = 'center';
+      col.className = 'col-3';
+
+      // Bottone canale — usa textContent (sicuro vs XSS)
+      var btn = document.createElement('button');
+      btn.id = String(element.id);
+      btn.className = 'btn btn-primary channel-btn';
+      btn.style.cssText = 'width:90%;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;';
+      btn.setAttribute('onclick', "selectChannelLoad('" + element.id + "')");
+
+      // TODO-2.1: slot vuoti con stile differenziato
+      if (!element.name || element.name === String(element.id)) {
+        btn.textContent = '— empty —';
+        btn.classList.add('empty-channel');
+        btn.title = 'Slot vuoto (id: ' + element.id + ')';
+        btn.setAttribute('aria-label', 'Empty channel, id: ' + element.id); // TODO-6.3
+      } else {
+        btn.textContent = element.name; // textContent = sicuro vs XSS
+        btn.title = element.name;
+        btn.setAttribute('aria-label', 'Channel: ' + element.name); // TODO-6.3
       }
-      if(  i === channelMixer.length ){
-        document.getElementById("multychannel").innerHTML +=html
+
+      // TODO-2.3: un bottone non può avere sia tooltip che popover.
+      // Se esiste thumbnail → popover con preview immagine; altrimenti tooltip semplice (TODO-2.2).
+      if (element.thumbnail) {
+        btn.setAttribute('data-bs-toggle', 'popover');
+        btn.setAttribute('data-bs-trigger', 'hover');
+        btn.setAttribute('data-bs-placement', 'left');
+        btn.setAttribute('data-bs-html', 'true');
+        btn.setAttribute('data-bs-content', '<img src="' + element.thumbnail + '" style="width:120px;height:auto;display:block;">');
+        btn.setAttribute('data-thumbnail', element.thumbnail); // usato anche da dragManager se necessario
+      } else {
+        // TODO-2.2: Bootstrap tooltip (solo canali senza thumbnail)
+        btn.setAttribute('data-bs-toggle', 'tooltip');
+        btn.setAttribute('data-bs-placement', 'top');
       }
-      i++;
+
+      // TODO-2.5: drag & drop attributi (gestione eventi aggiunta in dragManager)
+      btn.setAttribute('draggable', 'true');
+
+      col.appendChild(btn);
+      row.appendChild(col);
     }
-    var element = document.getElementById(channelSelected+"");
-    if(element)
-      element.classList.add("selectedChannel");
-    
+
+    // Evidenzia canale selezionato
+    var selEl = document.getElementById(channelSelected + "");
+    if (selEl) selEl.classList.add("selectedChannel");
+
+    // TODO-2.2: inizializza Bootstrap tooltip su tutti i bottoni senza thumbnail
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+      new bootstrap.Tooltip(el);
+    });
+
+    // TODO-2.3: inizializza Bootstrap popover con thumbnail preview
+    document.querySelectorAll('[data-bs-toggle="popover"]').forEach(function(el) {
+      new bootstrap.Popover(el);
+    });
+
+    updateEditingLabel(channelSelected); // TODO-3.1
     resolve(channelMixer);
     loadprev = true;
-    load(); 
+    load();
   });
   return firstInitRetrive;
 }
@@ -84,17 +133,21 @@ export function load() {
 
 export function runChannel(channel) {
   // La transizione è letta dal DB sul server, basta inviare l'id del canale
+  startTransitionProgress();
   emit('set_channel', { id: channel });
   emit('set_toload', true);
   showChannelLive(channel);
+  showToast('▶ Running: ' + (channelMixer.find(c => c.id == channel)?.name || channel));
   console.log("run channel " + channel);
 }
 
 export function run() {
   // La transizione è letta dal DB sul server, basta inviare l'id del canale
+  startTransitionProgress();
   emit('set_channel', { id: channelSelected });
   emit('set_toload', true);
   showChannelLive(channelSelected);
+  showToast('▶ Running: ' + (channelMixer.find(c => c.id == channelSelected)?.name || channelSelected));
   console.log("run channel " + channelSelected);
 }
 
@@ -115,10 +168,19 @@ export function save() {
   if (!name) {
     name = channelSelected;
   }
-  var channel = { id: channelSelected, code: jsx, name: name };
+  // TODO-2.3: cattura thumbnail dal canvas Hydra (JPEG 30% quality per ridurre dimensione)
+  var thumbnail = null;
+  try {
+    var cvs = document.getElementById('hydra-canvas');
+    if (cvs) thumbnail = cvs.toDataURL('image/jpeg', 0.3);
+  } catch(e) {
+    // canvas può lanciare SecurityError in alcuni contesti (es. cross-origin)
+  }
+  var channel = { id: channelSelected, code: jsx, name: name, thumbnail: thumbnail };
   document.getElementById(channelSelected).innerText = name;
   document.getElementById(channelSelected).title = name;
   emit('save_channel', channel);
+  showToast('✓ Saved: ' + name);
   console.log("Save channel " + channel.id);
 }
 export function sequence(){
@@ -134,6 +196,12 @@ export function autosave() {
       element.classList.remove("liveChannelAutosave");
     }
   }
+  // Aggiorna indicatore autosave in navbar (TODO-1.3)
+  var ind = document.getElementById('autosaveIndicator');
+  if (ind) {
+      ind.className = 'as-indicator ' + (isautosave ? 'as-on' : 'as-off');
+      ind.title = 'Autosave ' + (isautosave ? 'ON' : 'OFF');
+  }
 }
 export function showChannelLive(channel) {
   var elementToremove = document.getElementsByClassName("liveChannel");
@@ -143,6 +211,12 @@ export function showChannelLive(channel) {
   var element = document.getElementById(channel);
   if (element)
     element.classList.add("liveChannel");
+  // Aggiorna badge LIVE in navbar (TODO-1.1)
+  var badge = document.getElementById('liveBadge');
+  if (badge) {
+      var liveChannel = channelMixer.find(function(c) { return c.id == channel; });
+      badge.textContent = '● LIVE: ' + (liveChannel ? liveChannel.name || String(liveChannel.id) : channel);
+  }
   channelLive = parseInt(channel);
 }
 
@@ -161,6 +235,7 @@ export function selectChannelLoad(channel) {
   channelSelected = parseInt(channel);
   loadprev = true;
   load();
+  updateEditingLabel(channel); // TODO-3.1
 }
 
 
@@ -173,6 +248,34 @@ export function saveTransition() {
   console.log("Auto-save transition: " + type + " " + duration + "ms");
 }
 
+// Aggiorna la label "Editing: <nome> [id: X]" sopra l'editor (TODO-3.1)
+function updateEditingLabel(channelId) {
+    var lbl = document.getElementById('editingLabel');
+    if (!lbl) return;
+    var ch = channelMixer.find(function(c) { return c.id == channelId; });
+    var name = ch ? (ch.name || String(ch.id)) : String(channelId);
+    lbl.textContent = 'Editing: ' + name + ' [id: ' + channelId + ']';
+}
+
+// Anima la progress bar per la durata della transizione (TODO-1.4)
+function startTransitionProgress() {
+    var dur = parseInt(document.getElementById('transitionDuration')?.value, 10) || 0;
+    if (dur <= 0) return;
+    var bar = document.getElementById('transProgressBar');
+    if (!bar) return;
+    bar.style.transition = 'none';
+    bar.style.width = '0%';
+    // requestAnimationFrame per garantire il repaint prima di avviare l'animazione
+    requestAnimationFrame(function() {
+        bar.style.transition = 'width ' + dur + 'ms linear';
+        bar.style.width = '100%';
+        setTimeout(function() {
+            bar.style.transition = 'none';
+            bar.style.width = '0%';
+        }, dur + 100);
+    });
+}
+
 export function initMixer(){
   emit('get_all');
   // Salvataggio automatico quando l'utente cambia tipo o durata transizione
@@ -180,4 +283,15 @@ export function initMixer(){
   var durEl  = document.getElementById('transitionDuration');
   if (typeEl) typeEl.addEventListener('change', saveTransition);
   if (durEl)  durEl.addEventListener('change',  saveTransition);
+  // TODO-2.4: filtro real-time canali per nome
+  var searchEl = document.getElementById('channelSearch');
+  if (searchEl) {
+      searchEl.addEventListener('input', function() {
+          var q = this.value.toLowerCase();
+          document.querySelectorAll('#multychannel .channel-btn').forEach(function(btn) {
+              var col = btn.closest('.col-3');
+              if (col) col.style.display = btn.textContent.toLowerCase().includes(q) ? '' : 'none';
+          });
+      });
+  }
 }

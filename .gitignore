@@ -4,3 +4,5 @@
 src/resource/db.json
 package-lock.json
 .claude/settings.local.json
+TODO_UX.md
+.claude
