@@ -342,8 +342,9 @@ export function showChannelLive(channel) {
   channelLive = parseInt(channel);
 }
 
-export function selectChannelLoad(channel) {
-  if (isautosave) {
+export function selectChannelLoad(channel, skipSave = false) {
+  // skipSave=true quando il canale corrente è stato eliminato: evita di re-inserirlo nel DB
+  if (isautosave && !skipSave) {
     save();
   }
   var elementToremove = document.getElementsByClassName("selectedChannel");

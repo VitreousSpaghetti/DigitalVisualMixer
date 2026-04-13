@@ -85,7 +85,7 @@ socket.on('channel_created', function(data) {
 socket.on('channel_deleted', function(data) {
     initializeChannel(data.channels).then(function() {
         var nextChannel = data.channels[0]; // primo canale disponibile dopo la cancellazione
-        selectChannelLoad(nextChannel.id);
+        selectChannelLoad(nextChannel.id, true); // skipSave: il canale eliminato non va risalvato
     });
 });
 
