@@ -176,8 +176,9 @@ var toload = true; //default
 io.sockets.on('connection', async function(socket) {
     console.log("app: init connection");
 
-    //getChannel setted live (await necessario: searchChannel è ora async)
-    io.sockets.emit("get_channel", await searchChannel(channelShow));
+    //getChannel setted live — searchChannel ora restituisce null se il canale non esiste
+    var currentChannel = await searchChannel(channelShow);
+    if (currentChannel) io.sockets.emit("get_channel", currentChannel);
 
     io.sockets.emit("get_toload", toload);
 
@@ -190,6 +191,7 @@ io.sockets.on('connection', async function(socket) {
 
         // Legge canale e transizione globale dal DB (fonte di verità)
         var channelData = await searchChannel(channelShow);
+        if (!channelData) return; // canale eliminato: ignora
         var transitionData = await getTransition();
         var transition = { type: transitionData.type, duration: transitionData.duration };
         console.log("app: set_channel to show " + channelId + " transition: " + transition.type);
@@ -236,8 +238,8 @@ io.sockets.on('connection', async function(socket) {
     //return the code of a channel
     socket.on('get_code', async function(variable) {
         console.log("app: get_code "+variable);
-        var code = (await searchChannel(variable)).code;
-        socket.emit('get_code', code);
+        var ch = await searchChannel(variable);
+        socket.emit('get_code', ch ? ch.code : '');
     });
 
     //return a single channel
