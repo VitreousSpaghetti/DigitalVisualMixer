@@ -1,6 +1,4 @@
 TODO--------------    
-export db e import db
-init db se non esiste il file
 preparare una pagina per le macro ( scalabile: idea di memorizzare macro )
 settaggio di source audio interna al pc
 memorizzare video da poi usare come campionatori

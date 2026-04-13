@@ -131,11 +131,6 @@ export var reloadDb = async function(newData) {
  */
 export var getAll = async function () {
     var channels = await db.recordManager.findAll(ENTITY_CHANNEL);
-    if (!channels || channels.length === 0) {
-        await db.recordManager.insert(ENTITY_CHANNEL, { id: 0, name: '0', code: '' });
-        await db.flush();
-        channels = await db.recordManager.findAll(ENTITY_CHANNEL);
-    }
     // Ordina per sortOrder se disponibile, fallback su id (TODO-2.5)
     return channels.sort(function(a, b) {
         var sa = (a.sortOrder !== undefined && a.sortOrder !== null) ? a.sortOrder : a.id;
@@ -168,13 +163,7 @@ export var saveChannel = async function (channelToSave) {
 };
 
 export var searchChannel = async function (channelID) {
-    var channel = await db.recordManager.findByIdSingle(ENTITY_CHANNEL, channelID);
-    if (!channel) {
-        channel = { id: channelID, name: String(channelID), code: '' };
-        await db.recordManager.insert(ENTITY_CHANNEL, channel);
-        await db.flush();
-    }
-    return channel;
+    return await db.recordManager.findByIdSingle(ENTITY_CHANNEL, channelID);
 };
 
 /**
