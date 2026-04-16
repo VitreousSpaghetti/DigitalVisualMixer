@@ -15,6 +15,8 @@ const { Database } = require('vitreousdatabase');
 const DB_PATH = './src/resource/db.json';
 const ENTITY_CHANNEL    = 'channel';
 const ENTITY_TRANSITION = 'transition'; // entità globale: unico record id=0
+const ENTITY_MACRO      = 'macro';      // variabili e azioni macro live
+const ENTITY_PRESET     = 'preset';     // preset nominati: canale + macro vars + transizione
 
 // --- MIGRAZIONE FILE ---
 // Legge il db.json grezzo PRIMA che Database.create() lo gestisca.
@@ -91,6 +93,19 @@ if (!existingEntities.includes(ENTITY_TRANSITION)) {
     // Inserisce il record di default
     await db.recordManager.insert(ENTITY_TRANSITION, { id: 0, type: 'cut', duration: 0 });
     await db.flush();
+}
+
+// Crea entità macro se assente (schema variabili/azioni macro live)
+if (!existingEntities.includes(ENTITY_MACRO)) {
+    await db.entityManager.createEntity(ENTITY_MACRO, {
+        type: 'table',
+        values: ['id', 'name', 'type', 'params', 'trigger', 'sortOrder'],
+        id: ['id'],
+        notnullable: ['id'],
+        unique: ['id'],
+        nested: []
+    });
+    console.log('manager: entità macro creata');
 }
 
 // Reinserisce i canali salvati dalla migrazione
@@ -226,6 +241,163 @@ export var getTransition = async function () {
         await db.flush();
     }
     return t;
+};
+
+// --- MACRO ---
+
+/**
+ * Restituisce tutte le macro ordinate per sortOrder, poi per id.
+ */
+export var getAllMacros = async function () {
+    var macros = await db.recordManager.findAll(ENTITY_MACRO);
+    return macros.sort(function(a, b) {
+        var sa = (a.sortOrder !== undefined && a.sortOrder !== null) ? a.sortOrder : a.id;
+        var sb = (b.sortOrder !== undefined && b.sortOrder !== null) ? b.sortOrder : b.id;
+        return sa < sb ? -1 : sa > sb ? 1 : 0;
+    });
+};
+
+/**
+ * Salva o aggiorna una macro (upsert).
+ * params e trigger sono stringhe JSON serializzate.
+ */
+export var saveMacro = async function (macro) {
+    var existing = await db.recordManager.findByIdSingle(ENTITY_MACRO, macro.id);
+    var fields = {
+        name:      macro.name      ?? '',
+        type:      macro.type      ?? 'variable',
+        params:    macro.params    ?? '{}',
+        trigger:   macro.trigger   ?? null,
+        sortOrder: macro.sortOrder ?? 0
+    };
+    if (existing) {
+        await db.recordManager.update(ENTITY_MACRO, { id: macro.id }, fields);
+    } else {
+        await db.recordManager.insert(ENTITY_MACRO, { id: macro.id, ...fields });
+    }
+    await db.flush();
+    console.log('manager: saveMacro id=' + macro.id);
+};
+
+/**
+ * Crea una macro vuota di tipo 'variable' con id = max+1.
+ * @param {object} data - campi opzionali (name, type, params, trigger, sortOrder)
+ * @returns {Promise<number>} l'id della nuova macro
+ */
+export var createMacro = async function (data) {
+    var macros = await db.recordManager.findAll(ENTITY_MACRO);
+    var maxId = macros.reduce(function(m, r) { return Math.max(m, r.id); }, -1);
+    var newId = maxId + 1;
+    await db.recordManager.insert(ENTITY_MACRO, {
+        id:        newId,
+        name:      data?.name      ?? 'macro',
+        type:      data?.type      ?? 'variable',
+        params:    data?.params    ?? '{}',
+        trigger:   data?.trigger   ?? null,
+        sortOrder: data?.sortOrder ?? newId
+    });
+    await db.flush();
+    console.log('manager: createMacro → id=' + newId);
+    return newId;
+};
+
+/**
+ * Elimina una macro dal DB.
+ * @param {number} macroId - id da eliminare
+ */
+export var deleteMacro = async function (macroId) {
+    await db.recordManager.deleteRecord(ENTITY_MACRO, { id: macroId });
+    await db.flush();
+    console.log('manager: deleteMacro id=' + macroId);
+};
+
+// --- PRESET ---
+
+/**
+ * Crea l'entità preset se assente nel DB.
+ * Schema: id, name, channelId, macroVars (JSON string), transition (JSON string), createdAt (ISO string).
+ */
+const existingEntitiesForPreset = await db.entityManager.listEntities();
+if (!existingEntitiesForPreset.includes(ENTITY_PRESET)) {
+    await db.entityManager.createEntity(ENTITY_PRESET, {
+        type: 'table',
+        values: ['id', 'name', 'channelId', 'macroVars', 'transition', 'createdAt'],
+        id: ['id'],
+        notnullable: ['id'],
+        unique: ['id'],
+        nested: []
+    });
+    console.log('manager: entità preset creata');
+}
+
+/**
+ * Restituisce tutti i preset ordinati per id discendente (più recenti prima).
+ * @returns {Promise<Array>}
+ */
+export var getPresets = async function () {
+    var presets = await db.recordManager.findAll(ENTITY_PRESET);
+    return presets.sort(function(a, b) { return b.id - a.id; });
+};
+
+/**
+ * Crea un nuovo preset con id = max+1.
+ * macroVars e transition vengono serializzati come JSON string se passati come oggetti.
+ * @param {object} data - { name, channelId, macroVars, transition }
+ * @returns {Promise<number>} id del preset creato
+ */
+export var createPreset = async function (data) {
+    var presets = await db.recordManager.findAll(ENTITY_PRESET);
+    var maxId = presets.reduce(function(m, r) { return Math.max(m, r.id); }, -1);
+    var newId = maxId + 1;
+    // Serializza macroVars e transition se sono oggetti
+    var macroVarsStr = (data.macroVars && typeof data.macroVars === 'object')
+        ? JSON.stringify(data.macroVars) : (data.macroVars ?? '{}');
+    var transitionStr = (data.transition && typeof data.transition === 'object')
+        ? JSON.stringify(data.transition) : (data.transition ?? '{}');
+    await db.recordManager.insert(ENTITY_PRESET, {
+        id:         newId,
+        name:       data.name      ?? 'Preset ' + newId,
+        channelId:  data.channelId ?? 0,
+        macroVars:  macroVarsStr,
+        transition: transitionStr,
+        createdAt:  new Date().toISOString()
+    });
+    await db.flush();
+    console.log('manager: createPreset → id=' + newId);
+    return newId;
+};
+
+/**
+ * Elimina un preset per id.
+ * @param {number} presetId
+ */
+export var deletePreset = async function (presetId) {
+    await db.recordManager.deleteRecord(ENTITY_PRESET, { id: presetId });
+    await db.flush();
+    console.log('manager: deletePreset id=' + presetId);
+};
+
+/**
+ * Aggiorna un preset esistente (parziale: solo i campi forniti).
+ * macroVars e transition vengono serializzati se passati come oggetti.
+ * @param {number} presetId
+ * @param {object} data - campi da aggiornare (name, channelId, macroVars, transition)
+ */
+export var updatePreset = async function (presetId, data) {
+    var fields = {};
+    if (data.name      !== undefined) fields.name       = data.name;
+    if (data.channelId !== undefined) fields.channelId  = data.channelId;
+    if (data.macroVars !== undefined) {
+        fields.macroVars = (data.macroVars && typeof data.macroVars === 'object')
+            ? JSON.stringify(data.macroVars) : (data.macroVars ?? '{}');
+    }
+    if (data.transition !== undefined) {
+        fields.transition = (data.transition && typeof data.transition === 'object')
+            ? JSON.stringify(data.transition) : (data.transition ?? '{}');
+    }
+    await db.recordManager.update(ENTITY_PRESET, { id: presetId }, fields);
+    await db.flush();
+    console.log('manager: updatePreset id=' + presetId);
 };
 
 // Aggiorna la config transizione globale.

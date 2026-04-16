@@ -1,7 +1,7 @@
 TODO--------------    
 preparare una pagina per le macro ( scalabile: idea di memorizzare macro )
 settaggio di source audio interna al pc
-memorizzare video da poi usare come campionatori
+autocomplete e migliorare l'inserimento di funzioni hydra (compreso l'import dell'init con hush parametri, gestione source video/audio, import video o immagini)
 introdurre una demo
 DONE--------------
 ipotizzare console di error? o quantomeno un pop-up con errore

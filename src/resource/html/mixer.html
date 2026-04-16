@@ -119,6 +119,10 @@
                 <li class="nav-item">
                   <a class="nav-link" onclick="selectActionExec('showMacro')">Help</a>
                 </li>
+                <!-- MACRO3: voce Macro → apre il Macro Manager Panel (modal-xl con tab Variabili | Azioni | Preset) -->
+                <li class="nav-item">
+                  <a class="nav-link" onclick="selectActionExec('openMacroManager')">Macro</a>
+                </li>
               </ul>
             </div>
             <!-- Badge canale live - TODO-1.1 -->
@@ -197,6 +201,48 @@
               placeholder="🔍 Cerca canale…" autocomplete="off">
           </div>
           <div class="multychannel" title="change the channel workplace" id="multychannel">
+          </div>
+
+          <!-- Macro Variables Panel — visibile solo se esistono macro variabili nel DB -->
+          <div class="multychannel" id="macroPanel" style=";padding:4px 0;">
+            <div class="row spacingRow align-items-center">
+              <div class="col" style="text-align:left;">Macro Variables</div>
+              <div class="col-auto" style="padding-right:6px;">
+                <button class="btn btn-sm"
+                  style="padding:1px 7px;font-size:0.8em;background:#2e6e2e!important;border-color:#3a9a3a!important;color:#fff;"
+                  onclick="selectActionExec('addMacroVar')" title="Aggiungi nuova macro variabile">+</button>
+              </div>
+            </div>
+            <!-- Slider generati dinamicamente da macroVarManager.js → renderMacroPanel() -->
+            <div id="macroSliders" style="padding:2px 8px;"></div>
+          </div>
+
+          <!-- Macro Actions Panel — visibile solo se esistono macro azione nel DB -->
+          <div class="multychannel" id="macroActionsPanel" style=";padding:4px 0;">
+            <div class="row spacingRow align-items-center">
+              <div class="col" style="text-align:left;">Macro Actions</div>
+              <div class="col-auto" style="padding-right:6px;">
+                <button class="btn btn-sm"
+                  style="padding:1px 7px;font-size:0.8em;background:#2e6e2e!important;border-color:#3a9a3a!important;color:#fff;"
+                  onclick="selectActionExec('addMacroAction')" title="Aggiungi nuova macro azione">+</button>
+              </div>
+            </div>
+            <!-- Lista generata dinamicamente da macroManager.js → renderActionPanel() -->
+            <div id="macroActionsList" style="padding:2px 8px;"></div>
+          </div>
+
+          <!-- Preset Panel — visibile solo se esistono preset nel DB; generato da presetManager.js -->
+          <div class="multychannel" id="presetPanel" style=";padding:4px 0;">
+            <div class="row spacingRow align-items-center">
+              <div class="col" style="text-align:left;">Preset</div>
+              <div class="col-auto" style="padding-right:6px;">
+                <button class="btn btn-sm"
+                  style="padding:1px 7px;font-size:0.8em;background:#2e6e2e!important;border-color:#3a9a3a!important;color:#fff;"
+                  onclick="selectActionExec('addPreset')" title="Salva stato corrente come preset">+</button>
+              </div>
+            </div>
+            <!-- Lista preset generata dinamicamente da presetManager.js → renderPresetPanel() -->
+            <div id="presetList" style="padding:2px 8px;"></div>
           </div>
 <!-- 
           <div class="multychannel" title="change the channel workplace" id="function">

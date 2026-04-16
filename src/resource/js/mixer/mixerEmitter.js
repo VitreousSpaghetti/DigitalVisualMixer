@@ -7,6 +7,9 @@ import {
     autosave, channelSelected, loadprev,
     selectChannelLoad } from "./mixerManager.js";
 import { showToast } from "./toastManager.js";
+import { setMacroList, setMacroVars } from "./macroVarManager.js";
+import { setActionMacros } from "./macroManager.js";
+import { setPresetList } from "./presetManager.js";
 var socket = io();
 
 // TODO-6.2: Mostra/nasconde banner disconnessione
@@ -93,6 +96,54 @@ socket.on('channel_deleted', function(data) {
 // Mostra un toast di errore con il messaggio inviato dal server.
 socket.on('delete_channel_error', function(message) {
     showToast('⚠ ' + message, 'error');
+});
+
+// --- MACRO ---
+
+// Riceve la lista completa delle macro e aggiorna panel variabili + binding azioni
+socket.on('get_macros', function(macros) {
+    setMacroList(macros);      // aggiorna slider macro variabili
+    setActionMacros(macros);   // rebind keyboard triggers macro azione
+});
+
+// Macro creata: aggiorna entrambe le liste
+socket.on('macro_created', function(data) {
+    setMacroList(data.macros);
+    setActionMacros(data.macros);
+});
+
+// Macro eliminata: aggiorna entrambe le liste
+socket.on('macro_deleted', function(data) {
+    setMacroList(data.macros);
+    setActionMacros(data.macros);
+});
+
+// Sincronizzazione valori macro da altri client (non usato in mixer: il mixer è la sorgente)
+// Utile se in futuro ci sono più istanze mixer connesse simultaneamente
+socket.on('sync_macros', function(vars) {
+    setMacroVars(vars);
+});
+
+// --- PRESET ---
+
+// Riceve la lista completa dei preset e aggiorna il panel
+socket.on('get_presets', function(presets) {
+    setPresetList(presets);
+});
+
+// Preset creato: aggiorna la lista
+socket.on('preset_created', function(data) {
+    setPresetList(data.presets);
+});
+
+// Preset eliminato: aggiorna la lista
+socket.on('preset_deleted', function(data) {
+    setPresetList(data.presets);
+});
+
+// Preset aggiornato (update_preset): aggiorna la lista
+socket.on('preset_updated', function(data) {
+    setPresetList(data.presets);
 });
 
 export function emit(emitter, arg){

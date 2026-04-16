@@ -5,7 +5,7 @@ import fs from 'fs';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { searchChannel, saveChannel, getAll, getTransition, setTransition, reorderChannels, reloadDb, createChannel, deleteChannel }  from './manager.js'
+import { searchChannel, saveChannel, getAll, getTransition, setTransition, reorderChannels, reloadDb, createChannel, deleteChannel, getAllMacros, saveMacro, createMacro, deleteMacro, getPresets, createPreset, deletePreset, updatePreset }  from './manager.js'
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { nodeResolve } from '@rollup/plugin-node-resolve';
@@ -293,6 +293,74 @@ io.sockets.on('connection', async function(socket) {
         var updatedChannels = await getAll();
         // Risposta solo al socket richiedente (non broadcast)
         socket.emit('channel_deleted', { deletedId: channelId, channels: updatedChannels });
+    });
+
+    // --- MACRO ---
+
+    // Invia tutte le macro al client che si connette o richiede
+    socket.on('get_macros', async function () {
+        console.log("app: get_macros");
+        socket.emit('get_macros', await getAllMacros());
+    });
+
+    // Salva/aggiorna una macro esistente (upsert)
+    socket.on('save_macro', async function (macro) {
+        console.log("app: save_macro id=" + macro.id);
+        await saveMacro(macro);
+        socket.emit('get_macros', await getAllMacros());
+    });
+
+    // Crea una nuova macro vuota; notifica solo il client richiedente
+    socket.on('create_macro', async function (data) {
+        console.log("app: create_macro");
+        var newId = await createMacro(data);
+        var allMacros = await getAllMacros();
+        socket.emit('macro_created', { id: newId, macros: allMacros });
+    });
+
+    // Elimina una macro per id; notifica solo il client richiedente
+    socket.on('delete_macro', async function (macroId) {
+        console.log("app: delete_macro id=" + macroId);
+        await deleteMacro(macroId);
+        var allMacros = await getAllMacros();
+        socket.emit('macro_deleted', { deletedId: macroId, macros: allMacros });
+    });
+
+    // Broadcast valori variabili macro a tutti i client (incluso live.html)
+    socket.on('sync_macros', function (vars) {
+        socket.broadcast.emit('sync_macros', vars);
+    });
+
+    // --- PRESET ---
+
+    // Invia tutti i preset al client che si connette o richiede
+    socket.on('get_presets', async function () {
+        console.log("app: get_presets");
+        socket.emit('get_presets', await getPresets());
+    });
+
+    // Crea un nuovo preset; notifica solo il client richiedente
+    socket.on('create_preset', async function (data) {
+        console.log("app: create_preset nome=" + data.name);
+        var newId = await createPreset(data);
+        var allPresets = await getPresets();
+        socket.emit('preset_created', { id: newId, presets: allPresets });
+    });
+
+    // Elimina un preset per id; notifica solo il client richiedente
+    socket.on('delete_preset', async function (presetId) {
+        console.log("app: delete_preset id=" + presetId);
+        await deletePreset(presetId);
+        var allPresets = await getPresets();
+        socket.emit('preset_deleted', { deletedId: presetId, presets: allPresets });
+    });
+
+    // Aggiorna un preset esistente (nome, channelId, macroVars, transition); notifica solo il richiedente
+    socket.on('update_preset', async function (data) {
+        console.log("app: update_preset id=" + data.id);
+        await updatePreset(data.id, data);
+        var allPresets = await getPresets();
+        socket.emit('preset_updated', { updatedId: data.id, presets: allPresets });
     });
 
 });  

@@ -296,3 +296,9 @@ a.dropdown-item{
     z-index: 10000;
     pointer-events: none;
 }
+
+/* MACRO3 §8.1 — Flash visivo breve quando una macro azione viene eseguita */
+.macro-flash {
+    background: rgba(74, 158, 255, 0.25) !important;
+    transition: background 0.3s;
+}

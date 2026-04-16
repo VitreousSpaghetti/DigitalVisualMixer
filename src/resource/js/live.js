@@ -27,6 +27,23 @@ var socket = io();
 var channel =  null; //default
 var toload = null; //default
 var hydra = new Hydra({ detectAudio: true, canvas: document.getElementById("hydra-canvas") });
+
+// Valori correnti delle macro variabili ricevuti via sync_macros dal mixer
+window.macroVars = {};
+
+/**
+ * Sostituisce {{key}} nel codice Hydra con il valore numerico corrente.
+ * Identica a processMacroVars in macroVarManager.js — inline per evitare dipendenze modulo.
+ * @param {string} jsx - codice Hydra grezzo (può contenere {{placeholder}})
+ * @returns {string} codice processato pronto per l'esecuzione
+ */
+function processMacroVars(jsx) {
+    var vars = window.macroVars || {};
+    if (!jsx || Object.keys(vars).length === 0) return jsx;
+    return jsx.replace(/\{\{(\w+)\}\}/g, function(match, key) {
+        return key in vars ? parseFloat(vars[key]) : match;
+    });
+}
 hydra.setResolution(1920, 1080);
 a.setBins(6);
 
@@ -36,12 +53,13 @@ function removeScript(id) {
     if (el) el.remove();
 }
 
-// Carica codice Hydra nel tag chalfunction (scrittura diretta su o0)
+// Carica codice Hydra nel tag chalfunction (scrittura diretta su o0).
+// Applica la sostituzione {{placeholder}} con i valori macro correnti prima dell'esecuzione.
 function loadCode(code) {
     removeScript('chalfunction');
     var s = document.createElement('script');
     s.setAttribute("id", "chalfunction");
-    s.textContent = code;
+    s.textContent = processMacroVars(code);
     document.body.appendChild(s);
 }
 
@@ -160,6 +178,12 @@ var loadChannel = function(){
 }
 
 //SET SOCKET EVENT
+
+// Riceve i valori aggiornati delle macro variabili dal mixer e li applica globalmente.
+// loadCode() usa window.macroVars ad ogni esecuzione: il prossimo channel load usa i valori nuovi.
+socket.on('sync_macros', function(vars) {
+    window.macroVars = vars || {};
+});
 
 socket.on('get_channel', function(variable) {
     channel = variable;

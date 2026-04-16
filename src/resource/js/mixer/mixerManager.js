@@ -5,10 +5,12 @@ import { emit } from "./mixerEmitter.js";
 import { showToast } from "./toastManager.js";
 import { refreshHydra } from "./hydraManager.js";
 import { ModalPanel } from "./modalManager.js";
+import { processMacroVars, getCurrentMacroVars } from "./macroVarManager.js";
 
 
 
-var channelMixer = [];
+// Export channelMixer per deckManager.js (dropdown canali nell'editor azioni MACRO3)
+export var channelMixer = [];
 var channelLive= 0;
 export var isautosave = false;
 
@@ -217,14 +219,14 @@ export function run() {
 }
 
 export function prev() {
-
-  
   var jsx = getDoc();
   if (!jsx) {
     jsx = "hush();\nresetAudioAndSpeed();\ns0.initImage(\"./src/resource/img/alpha.png\");\nsrc(s0).out(o0);\nrender(o0);"
     reinit(jsx);
   }
-  refreshHydra(jsx);
+  // Applica la sostituzione {{placeholder}} con i valori correnti delle macro variabili
+  var processed = processMacroVars(jsx, getCurrentMacroVars());
+  refreshHydra(processed);
 };
 
 export function save() {
@@ -290,8 +292,9 @@ export function saveAndRun() {
   }
   window.addEventListener('error', tempErrorListener);
 
-  // Esegue localmente (preview sul canvas del mixer, non in live)
-  refreshHydra(jsx);
+  // Esegue localmente: applica macro vars prima del preview (salva codice originale con {{...}})
+  var processedJsx = processMacroVars(jsx, getCurrentMacroVars());
+  refreshHydra(processedJsx);
 
   // Dopo 120ms verifica se ci sono stati errori sincroni
   setTimeout(function() {
