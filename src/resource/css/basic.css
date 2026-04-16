@@ -1,304 +1,177 @@
-#hydra-ui {
-    position: fixed;
-    top: 0px;
-    left: 0px;
-    width: 100%;
-    height: 100%;
+/* ===== VITREOUS basic.css — ONE-PAGE LAYOUT (no body scrollbar) ===== */
+
+#hydra-ui { position: fixed; top: 0px; left: 0px; width: 100%; height: 100%; }
+.modal { color: black; }
+#hydra-ui canvas { width: 100%; height: 100%; aspect-ratio: auto 1920 / 1080; 
+    max-height: 300px; max-width: 533px;}
+
+/* ---- html e body: nessuna scrollbar esterna ---- */
+html { overflow: hidden; height: 100%; width: 100%; }
+body { background: #000; margin: 0px; padding: 0px; width: 100%; height: 100%; color: #fff; line-height: 1.4; overflow: hidden; }
+
+button { background: #363636 !important; border: 2px solid #2c2c2c !important; border-radius: 0% !important; }
+.selectedAction { background-color: white !important; color: #464646; }
+.selectedChannel { background-color: white !important; color: #464646; }
+.VitreousWelcome { text-align: left !important; display: block; background: #7676768a; font-size: 25px; padding: 100px; margin: 100px; border: 5px solid #0000004f; margin-left: 10px; }
+.liveChannel { background: #740000 !important; border: 2px solid #ac0000 !important; border-radius: 0% !important; }
+.liveChannelAutosave { background: #740000 !important; border: 2px solid #ac0000 !important; border-radius: 0% !important; }
+.liveChannel.selectedChannel { background-color: white !important; color: #740000; }
+.navbar-custom { z-index: 99; height: 100%; }
+
+/* ============================================================
+   ONE-PAGE LAYOUT
+   Struttura: #hydra-ui > container-fluid
+     ├── .row.height3    → navbar sticky (altezza auto)
+     └── .row.height97   → flex row, occupa spazio rimanente
+           ├── .col-md-8  → editor (55%), flex colonna
+           └── .col-md-4  → mix panel (45%), flex colonna
+   ============================================================ */
+
+/* Container principale: flex colonna */
+#hydra-ui > .container-fluid.height100 {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0;
 }
 
-.modal {
-    color: black;
-}
+/* Navbar: altezza naturale */
+div.height3 { height: auto; flex: 0 0 auto; }
 
-#hydra-ui canvas {
-    width: 100%;
-    height: 100%;
-    aspect-ratio: auto 1920 / 1080;
-}
-
-/* overflow-x su html+body insieme: solo su body causa il browser a trasferire l'overflow a html, generando una scrollbar verticale */
-html {
-    overflow-x: hidden;
-}
-
-body {
-    background: #000;
-    margin: 0px;
-    padding: 0px;
-    width: 100%;
-    height: 100%;
-    color: #fff;
-    line-height: 1.4;
-    overflow-x: hidden;
-}
-
-button {
-    background: #363636 !important;
-    border: 2px solid #2c2c2c !important;
-    border-radius: 0% !important;
-}
-
-.selectedAction {
-    background-color: white !important;
-    color: #464646;
-}
-
-.selectedChannel {
-    background-color: white !important;
-    color: #464646;
-}
-
-.VitreousWelcome {
-    text-align: left !important;
-    display: block;
-    background: #7676768a;
-    font-size: 25px;
-    padding: 100px;
-    margin: 100px;
-    border: 5px solid #0000004f;
-    margin-left: 10px;
-}
-
-.liveChannel {
-    background: #740000 !important;
-    border: 2px solid #ac0000 !important;
-    border-radius: 0% !important;
-}
-.liveChannelAutosave {
-    background: #740000 !important;
-    border: 2px solid #ac0000 !important;
-    border-radius: 0% !important;
-}
-
-.liveChannel.selectedChannel {
-    background-color: white !important;
-    color: #740000;
-}
-
-.navbar-custom {
-    z-index: 99;
-    height: 100%;
-}
-
-div.height100 {
-    height: 100%;
-}
-
-div.height90 {
-    height: 90%;
-}
-
+/* Riga principale: flex row, riempie lo spazio rimanente */
 div.height97 {
-    height: 97%;
+  flex: 1 1 0;
+  min-height: 0;
+  height: 0; /* trick flex: impedisce overflow */
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+  margin: 0;
 }
 
-div.height3 {
-    height: 3%;
+/* Helper altezze */
+div.height100 { height: 100%; }
+div.height90  { height: 100%; }
+
+/* ---- Colonna sinistra: Editor (55%) ---- */
+.col-md-8.height100.code {
+  flex: 0 0 55% !important;
+  max-width: 55% !important;
+  width: 55% !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 0 !important;
 }
 
-.CodeMirror {
-    min-height: 100%;
+/* Row con CodeMirror: cresce, scroll interno */
+.col-md-8.height100.code > .row.height90 {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  margin: 0 !important;
 }
 
-.spacingRow {
-    padding: 10px 0px;
-    ;
+/* Barra inferiore editor e label: altezza fissa */
+.col-md-8.height100.code > .row.spacingRow { flex: 0 0 auto !important; margin: 0 !important; }
+#editingLabel   { flex: 0 0 auto !important; }
+#hydraErrorPanel { flex: 0 0 auto !important; }
+
+/* ---- CodeMirror ---- */
+#codejs { height: 100%; max-height: 100%; overflow-y: auto; }
+.height90 #codejs { height: 100%; max-height: none; overflow-y: auto; }
+.CodeMirror { height: 100%; min-height: unset; }
+.CodeMirror-scroll { height: 100%; }
+
+/* ---- Colonna destra: Mix panel (45%) ---- */
+.col-md-4.mix {
+  flex: 0 0 45% !important;
+  max-width: 45% !important;
+  width: 45% !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 6px 8px !important;
+  gap: 4px !important;
+  box-sizing: border-box !important;
 }
 
-.code {
-    background: #282a36;
+/* Tutti i pannelli figlio: altezza auto */
+.col-md-4.mix > * { flex: 0 0 auto; min-height: 0; box-sizing: border-box; }
+.col-md-4.mix > .row { flex: 0 0 auto; margin: 0; width: 100%; }
+
+/* Griglia canali: cresce e scrolla internamente */
+#multychannel {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
 }
+#multychannel .row { margin-left: 0 !important; margin-right: 0 !important; }
+.multychannel { max-height: none; overflow: visible; }
 
-.mix {
-    background: #505050;
-}
-
-.tv {
-    padding-top: 10px;
-}
-
-.tv #hydra-canvas {
-    border: 3px solid white;
-    background: black;
-}
-
-.multychannel {
-
-    max-height: 430px;
-    overflow: hidden;
-    overflow-y: auto;
-
-}
-
+/* ---- Stili base ---- */
+.spacingRow { padding: 10px 0px; }
+.code { background: #282a36; }
+.mix  { background: #505050; }
+.tv   { padding-top: 10px; }
+.tv #hydra-canvas { border: 3px solid white; background: black; }
 .button-channel {}
+.channel-btn { font-size: 0.78em; }
 
-#codejs {
-    max-height: 100%;
-    overflow-y: auto;
-}
+/* ---- Syntax highlight ---- */
+.ͼd { color: #00fb97; }
+.ͼm { color: #e16400; }
 
-/* TODO-3.4: editor altezza dinamica per evitare double-scroll */
-.height90 #codejs {
-    height: calc(97vh - 3% - 70px);
-    max-height: none;
-    overflow-y: auto;
-}
+/* ---- Dropdown ---- */
+.dropdown-menu li { position: relative; }
+a.dropdown-toggle { padding-bottom: 0px; }
+ul.dropdown-menu { background-color: #212529; border: 1px; }
+a.dropdown-item { color: #ababab; }
+.dropdown-menu .dropdown-submenu { display: none; position: absolute; left: 100%; top: -7px; }
+.dropdown-menu .dropdown-submenu-left { right: 100%; left: auto; }
+.dropdown-menu > li:hover > .dropdown-submenu { display: block; }
 
-.ͼd {
-    color: #00fb97;
-}
+/* ---- Disconnect banner ---- */
+#disconnectBanner { font-family: 'Roboto Condensed', sans-serif; font-size: 0.9em; letter-spacing: 0.5px; }
 
-.ͼm {
-    color: #e16400;
-}
+/* ---- Canali vuoti ---- */
+.empty-channel { background: #1a1a1a !important; border: 2px dashed #444 !important; color: #555 !important; font-style: italic; }
+.empty-channel:hover { background: #252525 !important; border-color: #666 !important; }
 
-.dropdown-menu li {
-    position: relative;
-}
-a.dropdown-toggle{
-    padding-bottom: 0px;
-}
-a.dropdown-toggle{
-    padding-bottom: 0px;
-}
-ul.dropdown-menu{
-    background-color: #212529;
-    border: 1px;
-}
-a.dropdown-item{
-    color: #ababab;
-}
-.dropdown-menu .dropdown-submenu {
-    display: none;
-    position: absolute;
-    left: 100%;
-    top: -7px;
-}
+/* ---- Live badge ---- */
+.live-badge { color: #ff1744; font-weight: bold; font-size: 0.85em; padding: 2px 8px; animation: pulse-live 1.5s ease-in-out infinite; white-space: nowrap; }
+@keyframes pulse-live { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-.dropdown-menu .dropdown-submenu-left {
-    right: 100%;
-    left: auto;
-}
-
-.dropdown-menu>li:hover>.dropdown-submenu {
-    display: block;
-}
-
-/* TODO-6.2: banner disconnessione */
-#disconnectBanner {
-    font-family: 'Roboto Condensed', sans-serif;
-    font-size: 0.9em;
-    letter-spacing: 0.5px;
-}
-
-/* TODO-2.1: canali vuoti */
-.empty-channel {
-    background: #1a1a1a !important;
-    border: 2px dashed #444 !important;
-    color: #555 !important;
-    font-style: italic;
-}
-.empty-channel:hover {
-    background: #252525 !important;
-    border-color: #666 !important;
-}
-
-/* TODO-1.1: badge canale live in navbar */
-.live-badge {
-    color: #ff1744;
-    font-weight: bold;
-    font-size: 0.85em;
-    padding: 2px 8px;
-    animation: pulse-live 1.5s ease-in-out infinite;
-    white-space: nowrap;
-}
-@keyframes pulse-live {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-}
-
-/* TODO-1.3: indicatore autosave navbar */
-.as-indicator {
-    font-size: 0.75em;
-    font-weight: bold;
-    padding: 2px 6px;
-    margin-left: 6px;
-    border-radius: 3px;
-    cursor: default;
-}
-.as-on  { color: #00e676; }
+/* ---- Autosave indicator ---- */
+.as-indicator { font-size: 0.75em; font-weight: bold; padding: 2px 6px; margin-left: 6px; border-radius: 3px; cursor: default; }
+.as-on { color: #00e676; }
 .as-off { color: #555; }
 
-/* TODO-3.1: label canale in editing */
-.editing-label {
-    background: #1e1e2e;
-    color: #ababab;
-    font-size: 0.78em;
-    padding: 3px 10px;
-    border-bottom: 1px solid #333;
-    font-style: italic;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
+/* ---- Editing label ---- */
+.editing-label { background: #1e1e2e; color: #ababab; font-size: 0.78em; padding: 3px 10px; border-bottom: 1px solid #333; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* TODO-3.3: Save and Run in evidenza come operazione live */
-.saverun-item {
-    color: #ff6b35 !important;
-    font-weight: bold;
-}
-.saverun-item:hover {
-    color: #ff3d00 !important;
-    background-color: #2a1a10 !important;
-}
+/* ---- Save and Run ---- */
+.saverun-item { color: #ff6b35 !important; font-weight: bold; }
+.saverun-item:hover { color: #ff3d00 !important; background-color: #2a1a10 !important; }
 
-/* TODO-2.4: search box canali */
-.channel-search {
-    background: #2a2a2a !important;
-    color: #ccc !important;
-    border: 1px solid #444 !important;
-    border-radius: 3px !important;
-    font-size: 0.82em;
-}
+/* ---- Search canali ---- */
+.channel-search { background: #2a2a2a !important; color: #ccc !important; border: 1px solid #444 !important; border-radius: 3px !important; font-size: 0.82em; }
 .channel-search::placeholder { color: #666; }
 
-/* TODO-2.5: feedback drag & drop canali */
-.channel-btn[draggable="true"] {
-    cursor: grab;
-}
-.channel-btn.drag-over {
-    outline: 2px dashed #ff6b35 !important;
-    outline-offset: 2px;
-    background: #2a1a10 !important;
-}
+/* ---- Drag & drop canali ---- */
+.channel-btn[draggable="true"] { cursor: grab; }
+.channel-btn.drag-over { outline: 2px dashed #ff6b35 !important; outline-offset: 2px; background: #2a1a10 !important; }
 
-/* TODO-7.2: pannello errori Hydra */
-.hydra-error-panel {
-    background: #3a0000;
-    color: #ff6b6b;
-    font-family: monospace;
-    font-size: 0.8em;
-    padding: 6px 10px;
-    border-left: 3px solid #ff1744;
-    margin: 4px 0;
-    white-space: pre-wrap;
-    word-break: break-all;
-}
+/* ---- Pannello errori Hydra ---- */
+.hydra-error-panel { background: #3a0000; color: #ff6b6b; font-family: monospace; font-size: 0.8em; padding: 6px 10px; border-left: 3px solid #ff1744; margin: 4px 0; white-space: pre-wrap; word-break: break-all; }
 
-/* TODO-1.4: progress bar transizione */
-.trans-progress-bar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 3px;
-    width: 0%;
-    background: #ff1744;
-    z-index: 10000;
-    pointer-events: none;
-}
+/* ---- Progress bar transizione ---- */
+.trans-progress-bar { position: fixed; top: 0; left: 0; height: 3px; width: 0%; background: #ff1744; z-index: 10000; pointer-events: none; }
 
-/* MACRO3 §8.1 — Flash visivo breve quando una macro azione viene eseguita */
-.macro-flash {
-    background: rgba(74, 158, 255, 0.25) !important;
-    transition: background 0.3s;
-}
+/* ---- Macro flash ---- */
+.macro-flash { background: rgba(74, 158, 255, 0.25) !important; transition: background 0.3s; }
