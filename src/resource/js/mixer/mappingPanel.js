@@ -14,24 +14,30 @@ import { getMacroList, getVarDef, getCurrentMacroVars, MODES } from './macroVarM
 import { getPresetList } from './presetManager.js';
 import { channelMixer, channelSelected } from './mixerManager.js';
 import { startLearn, cancelLearn } from './mappingManager.js';
-import { parseJSON, isPress, sourceLabel, sourceFamily, sourceId } from './sourceUtil.js';
+import { parseJSON, isPress, sourceLabel, sourceFamily, sourceId, sourceIcon } from './sourceUtil.js';
 import { showToast } from './toastManager.js';
+import { icon } from './uiHelp.js';
 
 var _modal = null;
 var _filter = 'all';
 var _ed = null; // riga in modifica: { id: number|null, type: 'variable'|'action', src, srcDec }
 
 var ACTION_TYPES = [
-    { value: 'run',          label: 'Run live',                          param: null },
-    { value: 'prev',         label: 'Preview locale',                    param: null },
+    { value: 'run',          label: 'Send to live',                      param: null },
+    { value: 'prev',         label: 'Local preview',                     param: null },
     { value: 'save',         label: 'Save',                              param: null },
     { value: 'saverun',      label: 'Save and Run',                      param: null },
-    { value: 'nextRunLive',  label: 'Canale successivo live',            param: null },
-    { value: 'prevRunLive',  label: 'Canale precedente live',            param: null },
-    { value: 'setChannel',   label: 'Vai al canale',                     param: 'channelId' },
-    { value: 'applyPreset',  label: 'Applica preset',                    param: 'presetId' },
-    { value: 'rangeChannel', label: 'Intervallo note → canali (live)',   param: null }
+    { value: 'nextRunLive',  label: 'Next channel live',                 param: null },
+    { value: 'prevRunLive',  label: 'Previous channel live',             param: null },
+    { value: 'setChannel',   label: 'Edit channel',                      param: 'channelId' },
+    { value: 'applyPreset',  label: 'Apply preset',                      param: 'presetId' },
+    { value: 'rangeChannel', label: 'Note range → channels (live)',      param: null }
 ];
+
+// Etichetta della sorgente con l'icona della famiglia (UX_GUIDA RF-A3)
+function _srcHtml(src) {
+    return (src ? icon(sourceIcon(src)) + ' ' : '') + _esc(sourceLabel(src));
+}
 
 function $(id) { return document.getElementById(id); }
 
@@ -49,29 +55,30 @@ export function openMappingPanel(opts) {
     document.body.insertAdjacentHTML('beforeend',
         '<div class="modal fade mm" id="macroManagerModal" tabindex="-1">' +
         '<div class="modal-dialog modal-xl"><div class="modal-content">' +
-        '<div class="modal-header"><h5 class="modal-title">Macro Manager</h5>' +
-            '<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>' +
+        '<div class="modal-header"><h5 class="modal-title">' + icon('sliders') + ' Mappings</h5>' +
+            '<button type="button" class="help-btn ms-2" data-help="concepts-mappings" data-tip="Help: Mappings" aria-label="Help: Mappings">' + icon('circle-question') + '</button>' +
+            '<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div>' +
         '<div class="modal-body">' +
             '<div class="mm-tabs">' +
-                '<button data-tab="map" class="mm-tab active">Mappature <span id="mmCountMap"></span></button>' +
-                '<button data-tab="pre" class="mm-tab">Preset <span id="mmCountPre"></span></button>' +
+                '<button data-tab="map" class="mm-tab active">' + icon('sliders') + ' Mappings <span id="mmCountMap"></span></button>' +
+                '<button data-tab="pre" class="mm-tab">' + icon('bookmark') + ' Presets <span id="mmCountPre"></span></button>' +
             '</div>' +
             '<div id="mmTabMap">' +
                 '<div class="mm-toolbar">' +
-                    '<button id="mmLearnNew" class="mm-btn mm-primary" title="Premi e muovi un knob, una levetta, una nota o un tasto">🎛 Learn → nuova variabile</button>' +
-                    '<button id="mmAddVar" class="mm-btn">+ Variabile</button>' +
-                    '<button id="mmAddAct" class="mm-btn">+ Azione</button>' +
-                    '<select id="mmFilter" class="mm-input ms-auto" title="Filtra per tipo di sorgente">' +
-                        '<option value="all">Tutte</option><option value="midi">MIDI</option>' +
-                        '<option value="gamepad">Gamepad</option><option value="key">Tastiera</option>' +
-                        '<option value="none">Senza sorgente</option></select>' +
+                    '<button id="mmLearnNew" class="mm-btn mm-primary" data-tip="Click, then move a knob, a stick, a note or a key: it becomes a new variable">' + icon('wand-magic-sparkles') + ' Learn → new variable</button>' +
+                    '<button id="mmAddVar" class="mm-btn mm-add" data-tip="New macro variable, without a source yet">' + icon('plus') + ' Variable</button>' +
+                    '<button id="mmAddAct" class="mm-btn mm-add" data-tip="New action: a sequence of steps (go live, next channel, apply preset…) fired by a source">' + icon('plus') + ' Action</button>' +
+                    '<select id="mmFilter" class="mm-input ms-auto" data-tip="Filter by source type">' +
+                        '<option value="all">All</option><option value="midi">MIDI</option>' +
+                        '<option value="gamepad">Gamepad</option><option value="key">Keyboard</option>' +
+                        '<option value="none">No source</option></select>' +
                 '</div>' +
                 '<div id="mmEditor" class="mm-editor" style="display:none"></div>' +
-                '<table class="mm-table"><thead><tr><th>Sorgente</th><th>Destinazione</th><th>Modalità</th>' +
-                    '<th>Range</th><th>Valore live</th><th></th></tr></thead><tbody id="mmBody"></tbody></table>' +
+                '<table class="mm-table"><thead><tr><th>Source</th><th>Destination</th><th>Mode</th>' +
+                    '<th>Range</th><th>Live value</th><th></th></tr></thead><tbody id="mmBody"></tbody></table>' +
             '</div>' +
             '<div id="mmTabPre" style="display:none">' +
-                '<table class="mm-table"><thead><tr><th>Nome</th><th>Canale</th><th>Transizione</th><th></th></tr></thead>' +
+                '<table class="mm-table"><thead><tr><th>Name</th><th>Channel</th><th>Transition</th><th></th></tr></thead>' +
                 '<tbody id="mmPreBody"></tbody></table>' +
             '</div>' +
         '</div></div></div></div>');
@@ -119,7 +126,7 @@ function _onClick(e) {
     }
     if (t.classList.contains('mm-del')) {
         var md = getMacroList().find(function(x) { return x.id === id; });
-        if (md && confirm('Eliminare la mappatura "' + (md.name || id) + '"?')) emit('delete_macro', id);
+        if (md && confirm('Delete the mapping "' + (md.name || id) + '"?')) emit('delete_macro', id);
     }
     if (t.id === 'mmLearn')       _learnButton(t, function(src) { _ed.src = src; _proposeMode(); _syncFields(); });
     if (t.id === 'mmLearnDec')    _learnButton(t, function(src) { _ed.srcDec = src; _syncFields(); });
@@ -137,20 +144,20 @@ function _onClick(e) {
             id: id, channelId: channelSelected, macroVars: getCurrentMacroVars(),
             transition: { type: typeEl ? typeEl.value : 'cut', duration: durEl ? parseInt(durEl.value) || 0 : 0 }
         });
-        showToast('✓ Preset aggiornato con lo stato corrente');
+        showToast('Preset updated with the current state');
     }
     if (t.classList.contains('mmp-del')) {
         var p = getPresetList().find(function(x) { return x.id === id; });
-        if (p && confirm('Eliminare il preset "' + (p.name || id) + '"?')) emit('delete_preset', id);
+        if (p && confirm('Delete the preset "' + (p.name || id) + '"?')) emit('delete_preset', id);
     }
 }
 
 /** Bottone Learn: in ascolto finché non arriva una sorgente (o Esc) */
 function _learnButton(btn, onSrc) {
-    var txt = btn.textContent;
-    btn.textContent = '🔴 Muovi un controllo… (Esc annulla)';
+    var html = btn.innerHTML;
+    btn.innerHTML = icon('circle', 'learn-dot') + ' Move a control… (Esc cancels)';
     startLearn(function(src) {
-        btn.textContent = txt;
+        btn.innerHTML = html;
         if (src) onSrc(src);
     });
 }
@@ -181,24 +188,24 @@ function _renderTable() {
         if (m.type === 'variable') {
             var key = p.key || m.name || String(m.id), d = getVarDef(key) || {};
             attrs += ' data-var-row="' + _esc(key) + '"';
-            cells = '<td>' + _esc(sourceLabel(src) + (d.mode === 'inc' && d.srcDec ? '  /  − ' + sourceLabel(d.srcDec) : '')) + '</td>' +
+            cells = '<td>' + _srcHtml(src) + (d.mode === 'inc' && d.srcDec ? '  /  − ' + _srcHtml(d.srcDec) : '') + '</td>' +
                 '<td class="mm-key">{{' + _esc(key) + '}}</td>' +
                 '<td>' + _esc(MODES[d.mode] || '') + '</td>' +
                 '<td>' + _esc(d.min + ' – ' + d.max) + '</td>' +
                 '<td><span class="var-val" data-var-val="' + _esc(key) + '">' + _esc(+(+window.M[key]).toFixed(3)) + '</span> ' +
                     '<span class="var-ctrl" data-var-ctrl="' + _esc(key) + '"></span></td>';
         } else {
-            cells = '<td>' + _esc(sourceLabel(src)) + '</td>' +
+            cells = '<td>' + _srcHtml(src) + '</td>' +
                 '<td>' + _esc((m.name || '') + ': ' + _summary(p.actions)) + '</td>' +
-                '<td>Azione</td><td></td><td></td>';
+                '<td>Action</td><td></td><td></td>';
         }
-        return '<tr' + attrs + (conflict ? ' class="mm-conflict" title="⚠ Stessa sorgente usata da più righe"' : '') + '>' +
+        return '<tr' + attrs + (conflict ? ' class="mm-conflict" data-tip="The same source is used by more than one row"' : '') + '>' +
             cells +
-            '<td class="mm-actions"><button class="mm-btn mm-edit" data-id="' + m.id + '" title="Modifica">✏</button>' +
-            '<button class="mm-btn mm-del" data-id="' + m.id + '" title="Elimina">×</button></td></tr>';
+            '<td class="mm-actions"><button class="mm-btn mm-edit" data-id="' + m.id + '" data-tip="Edit" aria-label="Edit">' + icon('pen') + '</button>' +
+            '<button class="mm-btn mm-del" data-id="' + m.id + '" data-tip="Delete" aria-label="Delete">' + icon('trash') + '</button></td></tr>';
     });
     $('mmBody').innerHTML = rows.join('') ||
-        '<tr><td colspan="6" class="mm-empty">Nessuna mappatura: premi "Learn → nuova variabile" e muovi un controllo</td></tr>';
+        '<tr><td colspan="6" class="mm-empty">No mappings: press "Learn → new variable" and move a control</td></tr>';
     $('mmCountMap').textContent = '(' + list.length + ')';
 
     var presets = getPresetList();
@@ -207,14 +214,14 @@ function _renderTable() {
         var tr = parseJSON(pr.transition, {});
         return '<tr><td>' + _esc(pr.name || pr.id) + '</td><td>ch: ' + _esc(pr.channelId) + '</td>' +
             '<td>' + _esc((tr.type || '—') + '/' + (tr.duration !== undefined ? tr.duration + 'ms' : '?')) + '</td>' +
-            '<td class="mm-actions"><button class="mm-btn mmp-apply" data-id="' + pr.id + '" title="Applica">▶</button>' +
-            '<button class="mm-btn mmp-update" data-id="' + pr.id + '" title="Aggiorna con lo stato corrente">↺</button>' +
-            '<button class="mm-btn mmp-del" data-id="' + pr.id + '" title="Elimina">×</button></td></tr>';
-    }).join('') || '<tr><td colspan="4" class="mm-empty">Nessun preset salvato</td></tr>';
+            '<td class="mm-actions"><button class="mm-btn mmp-apply" data-id="' + pr.id + '" data-tip="Apply (does not go live)" aria-label="Apply">' + icon('play') + '</button>' +
+            '<button class="mm-btn mmp-update" data-id="' + pr.id + '" data-tip="Update with the current state" aria-label="Update">' + icon('rotate-left') + '</button>' +
+            '<button class="mm-btn mmp-del" data-id="' + pr.id + '" data-tip="Delete" aria-label="Delete">' + icon('trash') + '</button></td></tr>';
+    }).join('') || '<tr><td colspan="4" class="mm-empty">No presets saved</td></tr>';
 }
 
 function _num(label, id, cls, title) {
-    return '<label class="' + (cls || '') + '"' + (title ? ' title="' + title + '"' : '') + '>' + label +
+    return '<label class="' + (cls || '') + '"' + (title ? ' data-tip="' + title + '"' : '') + '>' + label +
         ' <input id="' + id + '" type="number" step="any" class="mm-input mm-num"></label>';
 }
 
@@ -229,45 +236,45 @@ function _openEditor(m, type, src) {
     var isVar = type === 'variable';
     _ed = { id: m ? m.id : null, type: type, src: m ? parseJSON(m.trigger, null) : (src || null), srcDec: p.srcDec || null, sortOrder: m ? m.sortOrder : 0 };
 
-    var html = '<div class="mm-ed-title">' + (m ? 'Modifica ' : 'Nuova ') + (isVar ? 'variabile' : 'azione') + '</div>' +
+    var html = '<div class="mm-ed-title">' + (m ? 'Edit ' : 'New ') + (isVar ? 'variable' : 'action') + '</div>' +
         '<div class="mm-row">' +
-            (m ? '' : '<label>Tipo <select id="mmType" class="mm-input"><option value="variable">Variabile</option><option value="action">Azione</option></select></label>') +
-            '<label>Sorgente</label><span id="mmSrc" class="mm-src"></span>' +
-            '<button id="mmLearn" class="mm-btn">🎛 Learn</button>' +
-            '<button id="mmSrcClear" class="mm-btn" title="Nessuna sorgente">✕</button>' +
-            '<label class="mm-f-note" title="Più note → una sola mappatura (es. un\'ottava come launchpad)">fino a nota ' +
+            (m ? '' : '<label>Type <select id="mmType" class="mm-input"><option value="variable">Variable</option><option value="action">Action</option></select></label>') +
+            '<label>Source</label><span id="mmSrc" class="mm-src"></span>' +
+            '<button id="mmLearn" class="mm-btn" data-tip="Click, then move the control to use as source">' + icon('wand-magic-sparkles') + ' Learn</button>' +
+            '<button id="mmSrcClear" class="mm-btn" data-tip="Remove the source" aria-label="Remove the source">' + icon('xmark') + '</button>' +
+            '<label class="mm-f-note" data-tip="Several notes → one mapping (e.g. an octave as a launchpad)">up to note ' +
                 '<input id="mmNoteTo" type="number" min="0" max="127" class="mm-input mm-num"></label>' +
         '</div>';
     if (isVar) {
         html += '<div class="mm-row">' +
                 '<label>Key {{<input id="mmKey" class="mm-input" placeholder="freq">}}</label>' +
-                '<label>Modalità <select id="mmMode" class="mm-input">' +
+                '<label>Mode <select id="mmMode" class="mm-input">' +
                     Object.keys(MODES).map(function(k) { return '<option value="' + k + '">' + MODES[k] + '</option>'; }).join('') +
                 '</select></label>' +
-                '<label><input type="checkbox" id="mmInvert"> Inverti</label>' +
+                '<label><input type="checkbox" id="mmInvert"> Invert</label>' +
             '</div><div class="mm-row">' +
                 _num('Min', 'mmMin') + _num('Max', 'mmMax') +
-                _num('Riposo', 'mmValue', '', 'Valore iniziale e di riposo (rilascio gate, fine impulso)') +
-                _num('ON / picco', 'mmOn', 'mm-f-on') +
-                _num('Step', 'mmStep', '', 'Passo dello slider e dell\'Incremento (vuoto = 1% del range)') +
-                _num('Glide ms', 'mmGlide', '', 'Smoothing (vuoto = 40 per Assoluta/Incremento, 0 per gli altri)') +
-                _num('Decadimento ms', 'mmDecay', 'mm-f-imp') +
-                '<label class="mm-f-imp">Curva <select id="mmCurve" class="mm-input"><option value="lin">Lineare</option><option value="exp">Esponenziale</option></select></label>' +
-                _num('Deadzone', 'mmDz', 'mm-f-axis', 'Zona morta della levetta (0..1)') +
+                _num('Rest', 'mmValue', '', 'Initial and rest value (gate released, end of impulse)') +
+                _num('ON / peak', 'mmOn', 'mm-f-on') +
+                _num('Step', 'mmStep', '', 'Step of the slider and of Increment (empty = 1% of the range)') +
+                _num('Glide ms', 'mmGlide', '', 'Smoothing (empty = 40 for Absolute/Increment, 0 for the others)') +
+                _num('Decay ms', 'mmDecay', 'mm-f-imp') +
+                '<label class="mm-f-imp">Curve <select id="mmCurve" class="mm-input"><option value="lin">Linear</option><option value="exp">Exponential</option></select></label>' +
+                _num('Deadzone', 'mmDz', 'mm-f-axis', 'Stick dead zone (0..1)') +
             '</div>' +
             '<div class="mm-row mm-f-inc">' +
-                '<label>Sorgente − (opzionale, es. bottone che diminuisce)</label><span id="mmSrcDec" class="mm-src"></span>' +
-                '<button id="mmLearnDec" class="mm-btn">🎛 Learn −</button>' +
-                '<button id="mmSrcDecClear" class="mm-btn">✕</button>' +
+                '<label>Source − (optional, e.g. a button that decreases)</label><span id="mmSrcDec" class="mm-src"></span>' +
+                '<button id="mmLearnDec" class="mm-btn" data-tip="Click, then move the control that decreases">' + icon('wand-magic-sparkles') + ' Learn −</button>' +
+                '<button id="mmSrcDecClear" class="mm-btn" data-tip="Remove the − source" aria-label="Remove the − source">' + icon('xmark') + '</button>' +
             '</div>' +
-            '<div class="mm-hint mm-f-inccc">Knob con fine corsa: arrivato in fondo non incrementa più, riportalo indietro e rigira. Levette e bottoni +/− non hanno questo limite.</div>';
+            '<div class="mm-hint mm-f-inccc">Knob with end stops: at the end it no longer increments, turn it back and turn again. Sticks and +/− buttons have no such limit.</div>';
     } else {
-        html += '<div class="mm-row"><label>Nome <input id="mmName" class="mm-input" placeholder="es: Intro"></label></div>' +
+        html += '<div class="mm-row"><label>Name <input id="mmName" class="mm-input" placeholder="e.g. Intro"></label></div>' +
             '<div id="mmSteps"></div>' +
-            '<div class="mm-row"><button id="mmAddStep" class="mm-btn">+ Step</button></div>';
+            '<div class="mm-row"><button id="mmAddStep" class="mm-btn mm-add" data-tip="Add a step to the sequence">' + icon('plus') + ' Step</button></div>';
     }
-    html += '<div class="mm-row"><button id="mmSave" class="mm-btn mm-primary">✓ Salva</button>' +
-        '<button id="mmCancel" class="mm-btn">Annulla</button></div>';
+    html += '<div class="mm-row"><button id="mmSave" class="mm-btn mm-primary">' + icon('check') + ' Save</button>' +
+        '<button id="mmCancel" class="mm-btn">Cancel</button></div>';
 
     var ed = $('mmEditor');
     ed.innerHTML = html;
@@ -310,8 +317,8 @@ function _syncFields() {
     show('.mm-f-inc', mode === 'inc');
     show('.mm-f-inccc', mode === 'inc' && t === 'cc');
     show('.mm-f-note', t === 'note');
-    $('mmSrc').textContent = sourceLabel(_ed.src);
-    if ($('mmSrcDec')) $('mmSrcDec').textContent = sourceLabel(_ed.srcDec);
+    $('mmSrc').innerHTML = _srcHtml(_ed.src);
+    if ($('mmSrcDec')) $('mmSrcDec').innerHTML = _srcHtml(_ed.srcDec);
 }
 
 function _closeEditor() {
@@ -327,7 +334,7 @@ function _addStep(action) {
     div.innerHTML = '<select class="mm-step-type mm-input">' +
         ACTION_TYPES.map(function(t) { return '<option value="' + t.value + '">' + t.label + '</option>'; }).join('') +
         '</select><span class="mm-step-param"></span>' +
-        '<button type="button" class="mm-btn mm-step-del" title="Rimuovi step">×</button>';
+        '<button type="button" class="mm-btn mm-step-del" data-tip="Remove step" aria-label="Remove step">' + icon('trash') + '</button>';
     $('mmSteps').appendChild(div);
     if (action) div.querySelector('.mm-step-type').value = action.type;
     _stepParam(div, action);
@@ -373,11 +380,11 @@ function _save() {
     if (_ed.type === 'variable') {
         var key = $('mmKey').value.trim();
         // {{key}} riconosce solo \w+: altri caratteri non verrebbero mai sostituiti
-        if (!/^\w+$/.test(key)) { showToast('⚠ Key: solo lettere, numeri e _', 'error'); return; }
+        if (!/^\w+$/.test(key)) { showToast('Key: letters, numbers and _ only', 'error'); return; }
         var dup = getMacroList().some(function(m) {
             return m.type === 'variable' && m.id !== _ed.id && (parseJSON(m.params, {}).key || m.name) === key;
         });
-        if (dup) { showToast('⚠ {{' + key + '}} esiste già', 'error'); return; }
+        if (dup) { showToast('{{' + key + '}} already exists', 'error'); return; }
         var params = {
             key: key, min: _n('mmMin', 0), max: _n('mmMax', 1), value: _n('mmValue', 0),
             on: _n('mmOn'), step: _n('mmStep'), mode: $('mmMode').value, glide: _n('mmGlide'),
@@ -387,10 +394,10 @@ function _save() {
         payload = { name: key, type: 'variable', params: JSON.stringify(params) }; // undefined = default automatico
     } else {
         var name = $('mmName').value.trim();
-        if (!name) { showToast('⚠ Nome obbligatorio', 'error'); return; }
+        if (!name) { showToast('Name is required', 'error'); return; }
         var actions = _readSteps();
         if (actions.some(function(a) { return a.type === 'rangeChannel'; }) && !(src && src.type === 'note' && src.nTo > src.n)) {
-            showToast('⚠ Intervallo note → canali richiede una nota con "fino a nota"', 'error');
+            showToast('Note range → channels needs a note with "up to note"', 'error');
             return;
         }
         payload = { name: name, type: 'action', params: JSON.stringify({ actions: actions }) };

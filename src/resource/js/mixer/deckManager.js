@@ -1,8 +1,8 @@
 
-import { run,prev,save,saveAndRun,load,setLoadprev,selectChannelLoad,autosave,initMixer,nextRunLive,prevRunLive, addChannel, deleteCurrentChannel, channelSelected, channelMixer, runChannel} from "./mixerManager.js";
+import { run,prev,save,saveAndRun,load,setLoadprev,selectChannelLoad,selectChannelClick,autosave,initMixer,nextRunLive,prevRunLive, addChannel, deleteCurrentChannel, channelSelected, channelMixer, runChannel} from "./mixerManager.js";
 import { initMirror } from "./rollupBundle/codeMirrorManager.js";
 import { initMacro } from "./macroManager.js";
-import { initNav,showMacro } from "./navManager.js";
+import { initNav } from "./navManager.js";
 import { inithydra } from "./hydraManager.js";
 import { initMacroVars, getCurrentMacroVars } from "./macroVarManager.js";
 import { emit } from "./mixerEmitter.js";
@@ -11,12 +11,24 @@ import { initPresets, applyPresetById } from "./presetManager.js";
 import { initMappings } from "./mappingManager.js";
 import { openMappingPanel } from "./mappingPanel.js";
 import { initPerform } from "./performManager.js";
+import { initTooltips, sc } from "./uiHelp.js";
+import { initContextMenu } from "./contextMenu.js";
+import { initGuide, openGuide } from "./guideManager.js";
+import { initPalette, openPalette } from "./palette.js";
+import { showToast } from "./toastManager.js";
 
 var apiLink = 'https:/'+'/hydra.ojack.xyz/api/';
 
 var selectActionExec = function (selectedAction) { 
-  if(selectedAction === 'showMacro'){
-    showMacro();
+  // Help → Guide (UX_GUIDA RF-D1, sostituisce il vecchio modale "Deck Macro")
+  if(selectedAction === 'showMacro' || selectedAction === 'guide'){
+    openGuide();
+  }
+  if(selectedAction === 'shortcuts'){
+    openGuide('shortcuts');
+  }
+  if(selectedAction === 'palette'){
+    openPalette();
   }
   if(selectedAction === 'run'){
     run();
@@ -43,10 +55,13 @@ var selectActionExec = function (selectedAction) {
   if(selectedAction === 'saverun'){
     // TODO-3.3: conferma se il canale selezionato è già quello live (evita errori accidentali)
     // Il confirm avviene PRIMA di saveAndRun: se l'utente annulla non vogliamo nemmeno salvare
+    // E6: modale dell'app invece di confirm() del browser
     var currentLiveEl = document.querySelector('.liveChannel');
     var selectedEl = document.querySelector('.selectedChannel');
     if (currentLiveEl && selectedEl && currentLiveEl.id === selectedEl.id) {
-      if (!confirm('Questo canale è già LIVE. Mandare in live la nuova versione?')) return;
+      ModalPanel('<p>This channel is already <strong>LIVE</strong>. Send the new version live?</p>',
+        'Channel already live', 'Cancel', saveAndRun, 'Save and Run');
+      return;
     }
     // saveAndRun: salva sempre, va live solo se il codice è sintatticamente valido
     saveAndRun();
@@ -71,16 +86,16 @@ var selectActionExec = function (selectedAction) {
 function showAddPresetModal() {
     var bodyHtml =
         '<div class="mb-2">' +
-        '  <label style="color:#aaa;font-size:0.85em;">Nome preset</label>' +
+        '  <label style="color:#aaa;font-size:0.85em;">Preset name</label>' +
         '  <input type="text" id="presetNameInput" class="form-control form-control-sm" ' +
-        '    style="background:#363636;color:#fff;border:1px solid #555;" placeholder="es: Intro Rossa">' +
+        '    style="background:#363636;color:#fff;border:1px solid #555;" placeholder="e.g. Red Intro">' +
         '</div>' +
-        '<div style="font-size:0.8em;color:#777;margin-top:6px;">Salva: canale corrente + slider macro + transizione</div>';
+        '<div style="font-size:0.8em;color:#777;margin-top:6px;">Saves: current channel + macro variable values + transition</div>';
 
     ModalPanel(
         bodyHtml,
-        'Salva Preset',
-        'Annulla',
+        'Save preset',
+        'Cancel',
         function() {
             var name = (document.getElementById('presetNameInput')?.value || '').trim();
             if (!name) return;
@@ -99,11 +114,12 @@ function showAddPresetModal() {
                 transition: transition
             });
         },
-        'Salva'
+        'Save'
     );
 }
 
 var init = function(){
+  initTooltips(); // UX_GUIDA RF-B3: prima di tutto, i moduli sotto scrivono già data-tip
   initMixer();
   initMirror();
   initMacro();
@@ -119,10 +135,19 @@ var init = function(){
   // Click sul monitor su una sorgente non mappata → nuova variabile con quella sorgente
   initMappings(function(src) { openMappingPanel({ type: 'variable', src: src }); });
   initPerform();
+  initContextMenu();
+  initGuide();
+  initPalette();
+  // RF-B7: i <kbd data-sc> statici di mixer.html prendono i tasti dalla fonte unica
+  document.querySelectorAll('kbd[data-sc]').forEach(function(k) { k.textContent = sc(k.dataset.sc); });
   // Lista canali (ordine sortOrder) e go-live per l'azione rangeChannel in macroManager.js
   window.getChannelList = function() { return channelMixer; };
   window.runChannel = runChannel;
   window.selectChannelLoad = selectChannelLoad;
+  window.selectChannelClick = selectChannelClick; // click sui bottoni canale (conferma modifiche non salvate)
+  window.openLiveWindow = function() {
+    window.open('./live?fit=cover','winname','directories=no,titlebar=no,toolbar=no,location=no,status=no,menubar=no,scrollbars=no,resizable=no,width=400,height=350');
+  };
   window.selectActionExec = selectActionExec;
   window.autosave = autosave;
   window.apiLink = apiLink;
@@ -141,7 +166,8 @@ var init = function(){
       var reader = new FileReader();
       reader.onload = function(e) {
           var data;
-          try { data = JSON.parse(e.target.result); } catch(err) { alert('File JSON non valido'); return; }
+          // E6: errori come toast dell'app, non alert() del browser
+          try { data = JSON.parse(e.target.result); } catch(err) { showToast('Invalid JSON file', 'error'); return; }
           fetch('/api/db/import', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -150,9 +176,9 @@ var init = function(){
           .then(function(r) { return r.json(); })
           .then(function(res) {
               if (res.ok) location.reload();
-              else alert('Errore import DB: ' + (res.error || 'sconosciuto'));
+              else showToast('Import DB failed: ' + (res.error || 'unknown error'), 'error');
           })
-          .catch(function(err) { alert('Errore import DB: ' + err.message); });
+          .catch(function(err) { showToast('Import DB failed: ' + err.message, 'error'); });
       };
       reader.readAsText(file);
   };

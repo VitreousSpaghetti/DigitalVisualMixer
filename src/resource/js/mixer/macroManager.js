@@ -11,7 +11,7 @@
  * window.selectActionExec e window.selectChannelLoad sono esposti da deckManager.js.
  */
 
-import { parseJSON, sourceLabel } from './sourceUtil.js';
+import { parseJSON, sourceLabel, sourceIcon } from './sourceUtil.js';
 
 /**
  * Inizializza i keyboard shortcut hardcoded.
@@ -108,7 +108,10 @@ export function renderActionPanel(macros) {
         if (macro.type === 'variable') row.dataset.varRow = p.key || macro.name;
 
         var src = document.createElement('kbd');
-        src.textContent = sourceLabel(parseJSON(macro.trigger, null));
+        var s = parseJSON(macro.trigger, null);
+        src.innerHTML = '<i class="fa-solid fa-' + sourceIcon(s) + '" aria-hidden="true"></i> ';
+        src.appendChild(document.createTextNode(sourceLabel(s)));
+        row.dataset.tip = 'Source → destination. Edit it in the Mappings manager (sliders button above)';
         var dest = document.createElement('span');
         dest.textContent = macro.type === 'variable'
             ? '{{' + (p.key || macro.name) + '}}'

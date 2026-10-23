@@ -34,7 +34,10 @@ export function togglePerform(force) {
     document.body.classList.toggle('perform-mode', on);
     _set('performMode', on ? '1' : '0');
     var btn = document.getElementById('performToggle');
-    if (btn) btn.textContent = on ? '✎ Edit (F2)' : '▶ Perform (F2)';
+    if (btn) {
+        btn.innerHTML = on ? '<i class="fa-solid fa-pen" aria-hidden="true"></i> Edit' : '<i class="fa-solid fa-circle-play" aria-hidden="true"></i> Perform';
+        btn.dataset.tip = on ? 'Back to the editor' : 'Perform view: big preview, variable bars, channel and preset pads';
+    }
     renderPerform();
 }
 
@@ -50,6 +53,7 @@ export function renderPerform() {
 
     // Il canale live si legge dalla griglia della sidebar, che mixerManager tiene aggiornata
     var liveEl = document.querySelector('#multychannel .liveChannel');
+    // Nessun tooltip sui pad: in Perform sono disattivati (RF-B6), l'etichetta del pad basta
     _pads('performChannels', channelMixer.map(function(c) {
         return { label: c.name || String(c.id), live: liveEl && liveEl.id === String(c.id), ch: c.id, run: function() { runChannel(c.id); } };
     }));

@@ -1,9 +1,8 @@
-
-import{ initFunction,showMacro } from "./menuFunctionManager.js"
+import{ initFunction } from "./menuFunctionManager.js"
 
 
 function initNav(){
     initFunction();
 }
 
-export{ initNav,showMacro }
+export{ initNav }

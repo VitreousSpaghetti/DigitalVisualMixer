@@ -5,7 +5,7 @@ import {
     initializeChannel, showChannelLive,
     setChannelSelected, setLoadprev, prev,
     autosave, channelSelected, loadprev,
-    selectChannelLoad } from "./mixerManager.js";
+    selectChannelLoad, markClean } from "./mixerManager.js";
 import { showToast } from "./toastManager.js";
 import { setMacroList, setMacroVars } from "./macroVarManager.js";
 import { renderActionPanel } from "./macroManager.js";
@@ -48,6 +48,7 @@ socket.on('set_channel', function(variable) {
 socket.on('find_channel', function (variable) {
     var code = variable.code;
     reinit(code);
+    markClean(code); // E3: appena caricato = nessuna modifica non salvata
     if (loadprev) {
         prev();
         setLoadprev(false);
@@ -98,7 +99,7 @@ socket.on('channel_deleted', function(data) {
 // Errore da 'delete_channel' (es: tentativo di cancellare l'unico canale).
 // Mostra un toast di errore con il messaggio inviato dal server.
 socket.on('delete_channel_error', function(message) {
-    showToast('⚠ ' + message, 'error');
+    showToast(message, 'error'); // l'icona la mette showToast in base al tipo
 });
 
 // --- MACRO ---

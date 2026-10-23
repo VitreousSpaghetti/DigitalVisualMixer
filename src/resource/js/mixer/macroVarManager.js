@@ -15,7 +15,7 @@
  */
 
 import { showToast } from './toastManager.js';
-import { parseJSON, isPress, sourceLabel } from './sourceUtil.js';
+import { parseJSON, isPress, sourceLabel, sourceIcon } from './sourceUtil.js';
 
 var M = window.M = window.M || {};
 
@@ -28,7 +28,7 @@ var dirty = null;    // { key: value } da inviare al prossimo frame
 var _emit = null;
 var _last = 0;
 
-export var MODES = { abs: 'Assoluta', inc: 'Incremento', gate: 'Gate', impulse: 'Impulso', toggle: 'Toggle' };
+export var MODES = { abs: 'Absolute', inc: 'Increment', gate: 'Gate', impulse: 'Impulse', toggle: 'Toggle' };
 
 /**
  * Inizializza il modulo con emit e avvia il loop per frame.
@@ -284,11 +284,11 @@ export function processMacroVars(jsx) {
     var r = window.processMacroVars(jsx);
     var uniq = function(a) { return a.filter(function(k, i) { return a.indexOf(k) === i; }); };
     if (r.missing.length) {
-        showToast('⚠ Variabile non definita: {{' + uniq(r.missing).join('}} {{') + '}}', 'error');
+        showToast('Undefined macro variable: {{' + uniq(r.missing).join('}} {{') + '}} (used as 0)', 'error');
     }
     if (r.warnings.length) {
         var k = r.warnings[0];
-        showToast('ℹ {{' + k + '}} in un\'espressione: è live solo in una funzione, es. ()=>M.' + k + '*2', 'info');
+        showToast('{{' + k + '}} inside an expression is live only in a function, e.g. ()=>M.' + k + '*2', 'info');
     }
     return r.code;
 }
@@ -308,9 +308,12 @@ function _paint(key) {
     document.querySelectorAll('[data-var-val="' + CSS.escape(key) + '"]').forEach(function(el) { el.textContent = txt; });
 }
 
-/** Posizione del controllo fisico quando non ha ancora "agganciato" il valore (soft takeover) */
+/**
+ * Posizione del controllo fisico quando non ha ancora "agganciato" il valore (soft takeover).
+ * Il simbolo davanti è l'icona diamond di Font Awesome via CSS (.var-ctrl:not(:empty)::before)
+ */
 function _ctrlText(s) {
-    return s.picked || s.ctrl === undefined ? '' : '◇' + _fmt(s.ctrl);
+    return s.picked || s.ctrl === undefined ? '' : _fmt(s.ctrl);
 }
 function _paintCtrl(key, s) {
     var txt = _ctrlText(s);
@@ -348,7 +351,7 @@ export function buildVarControl(key, vertical) {
     ctrl.className = 'var-ctrl';
     ctrl.dataset.varCtrl = key;
     ctrl.textContent = _ctrlText(s);
-    ctrl.title = 'Posizione del controllo: portalo al valore per riprenderlo (soft takeover)';
+    ctrl.dataset.tip = 'Physical control position: bring it to the value to take over (soft takeover)';
     var val = document.createElement('span');
     val.className = 'var-val';
     val.dataset.varVal = key;
@@ -366,7 +369,9 @@ export function buildVarControl(key, vertical) {
 
     var src = document.createElement('div');
     src.className = 'var-src';
-    src.textContent = d.src ? sourceLabel(d.src) + ' · ' + MODES[d.mode] : 'nessuna sorgente';
+    src.textContent = d.src ? sourceLabel(d.src) + ' · ' + MODES[d.mode] : 'no source';
+    if (d.src) src.insertAdjacentHTML('afterbegin', '<i class="fa-solid fa-' + sourceIcon(d.src) + '" aria-hidden="true"></i> ');
+    slider.dataset.tip = '{{' + key + '}} — drag to change the value live (' + d.min + '…' + d.max + ')';
 
     // Sidebar: sorgente nella riga del nome, per stare in poco spazio; Perform: sotto la barra
     if (vertical) row.append(head, slider, src);

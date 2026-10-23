@@ -1,6 +1,6 @@
 
 
-import { reinit, getDoc } from "./rollupBundle/codeMirrorManager.js";
+import { reinit, getDoc, onDocChange } from "./rollupBundle/codeMirrorManager.js";
 import { emit } from "./mixerEmitter.js";
 import { showToast } from "./toastManager.js";
 import { refreshHydra } from "./hydraManager.js";
@@ -89,12 +89,7 @@ export function setLoadprev(variable){
 export function initializeChannel(variable){
   const firstInitRetrive = new Promise((resolve, reject) => {
     var container = document.getElementById("multychannel");
-    // Dispone i tooltip Bootstrap esistenti prima di distruggere i nodi DOM —
-    // senza dispose() le istanze Popper restano nel body come tooltip orfani
-    container.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
-        var t = bootstrap.Tooltip.getInstance(el);
-        if (t) t.dispose();
-    });
+    // Tooltip delegati su [data-tip] (uiHelp.js): nessuna istanza da distruggere prima del re-render
     container.innerHTML = "";
     channelMixer = variable;
 
@@ -119,30 +114,24 @@ export function initializeChannel(variable){
       btn.id = String(element.id);
       btn.className = 'btn btn-primary channel-btn';
       btn.style.cssText = 'width:90%;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;';
-      btn.setAttribute('onclick', "selectChannelLoad('" + element.id + "')");
+      // E3: il click dell'utente chiede conferma se ci sono modifiche non salvate
+      btn.setAttribute('onclick', "selectChannelClick('" + element.id + "')");
 
       // TODO-2.1: slot vuoti con stile differenziato
       if (!element.name || element.name === String(element.id)) {
         btn.textContent = '— empty —';
         btn.classList.add('empty-channel');
-        btn.title = 'Slot vuoto (id: ' + element.id + ')';
         btn.setAttribute('aria-label', 'Empty channel, id: ' + element.id); // TODO-6.3
       } else {
         btn.textContent = element.name; // textContent = sicuro vs XSS
-        btn.title = element.name;
         btn.setAttribute('aria-label', 'Channel: ' + element.name); // TODO-6.3
       }
 
-      // Tooltip uniforme (nome canale) per tutti i bottoni con placement 'left'.
-      // Il popover thumbnail è rimosso: Bootstrap 5 sanitizza i data: URL (img src strippato)
-      // e sia popover che tooltip con 'top' escono da #multychannel (overflow:hidden)
-      // finendo nella search bar. 'left' resta nel panel col-4.
       // Il thumbnail è conservato in data-thumbnail per uso futuro (es. modal dettaglio).
       if (element.thumbnail) {
         btn.setAttribute('data-thumbnail', element.thumbnail);
       }
-      btn.setAttribute('data-bs-toggle', 'tooltip');
-      btn.setAttribute('data-bs-placement', 'left');
+      btn.dataset.tip = _channelTip(element.name, element.id);
 
       // TODO-2.5: drag & drop — abilita draggable e registra tutti i listener HTML5 Drag API
       btn.setAttribute('draggable', 'true');
@@ -165,10 +154,7 @@ export function initializeChannel(variable){
     // showChannelLive aggiorna sia la classe CSS che il testo del liveBadge in navbar
     showChannelLive(channelLive);
 
-    // Inizializza tooltip su tutti i bottoni canale (ora uniformi, niente più popover)
-    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
-      new bootstrap.Tooltip(el);
-    });
+
 
     updateEditingLabel(channelSelected); // TODO-3.1
     resolve(channelMixer);
@@ -204,7 +190,7 @@ export function runChannel(channel) {
   emit('set_channel', { id: channel });
   emit('set_toload', true);
   showChannelLive(channel);
-  showToast('▶ Running: ' + (channelMixer.find(c => c.id == channel)?.name || channel));
+  showToast('Live: ' + (channelMixer.find(c => c.id == channel)?.name || channel));
   console.log("run channel " + channel);
 }
 
@@ -214,7 +200,7 @@ export function run() {
   emit('set_channel', { id: channelSelected });
   emit('set_toload', true);
   showChannelLive(channelSelected);
-  showToast('▶ Running: ' + (channelMixer.find(c => c.id == channelSelected)?.name || channelSelected));
+  showToast('Live: ' + (channelMixer.find(c => c.id == channelSelected)?.name || channelSelected));
   console.log("run channel " + channelSelected);
 }
 
@@ -253,12 +239,11 @@ export function save() {
     if (isEmpty) {
       btn.textContent = '— empty —';
       btn.classList.add('empty-channel');
-      btn.title = 'Slot vuoto (id: ' + channelSelected + ')';
     } else {
       btn.textContent = nameStr;
       btn.classList.remove('empty-channel');
-      btn.title = nameStr;
     }
+    btn.dataset.tip = _channelTip(nameStr, channelSelected);
   }
 
   // Aggiorna channelMixer in memoria per coerenza con il prossimo re-render (es. drag&drop)
@@ -266,7 +251,8 @@ export function save() {
   if (entry) entry.name = String(name);
 
   emit('save_channel', channel);
-  showToast('✓ Saved: ' + name);
+  markClean(jsx);
+  showToast('Saved: ' + name);
   console.log("Save channel " + channel.id);
 }
 // Save & Run con controllo runtime reale (stesso approccio del preview):
@@ -301,7 +287,7 @@ export function saveAndRun() {
     window.removeEventListener('error', tempErrorListener);
     if (hadError) {
       // Errore rilevato: il pannello errore è già stato popolato da window.error in hydraManager
-      showToast('⚠ Save & Run bloccato — errore nel codice', 'error');
+      showToast('Save and Run blocked — error in the code', 'error');
     } else {
       run(); // nessun errore rilevato → manda in live
     }
@@ -325,7 +311,9 @@ export function autosave() {
   var ind = document.getElementById('autosaveIndicator');
   if (ind) {
       ind.className = 'as-indicator ' + (isautosave ? 'as-on' : 'as-off');
-      ind.title = 'Autosave ' + (isautosave ? 'ON' : 'OFF');
+      // RF-B4: tooltip dinamico, letto da uiHelp.js all'apertura
+      ind.dataset.tip = 'Autosave is ' + (isautosave ? 'ON' : 'OFF') + ': the channel is ' +
+          (isautosave ? '' : 'not ') + 'saved when you switch to another one — click to toggle';
   }
 }
 export function showChannelLive(channel) {
@@ -344,15 +332,21 @@ export function showChannelLive(channel) {
   var badge = document.getElementById('liveBadge');
   if (badge) {
       var liveChannel = channelMixer.find(function(c) { return c.id == channel; });
-      badge.textContent = '● LIVE: ' + (liveChannel ? liveChannel.name || String(liveChannel.id) : channel);
+      badge.querySelector('.live-name').textContent = liveChannel ? liveChannel.name || String(liveChannel.id) : channel;
   }
   channelLive = parseInt(channel);
+  // Il menu contestuale dell'editor si chiude quando cambia il live (UX_GUIDA edge case)
+  window.dispatchEvent(new Event('dvm:live'));
 }
 
 export function selectChannelLoad(channel, skipSave = false) {
   // skipSave=true quando il canale corrente è stato eliminato: evita di re-inserirlo nel DB
   if (isautosave && !skipSave) {
     save();
+  } else if (!skipSave && channel != channelSelected && isDirty()) {
+    // E3: cambio da MIDI/preset/azione senza autosave — non si blocca il live con una modale,
+    // ma la perdita non è più silenziosa
+    showToast('Unsaved changes discarded: ' + _channelName(channelSelected), 'info');
   }
   var elementToremove = document.getElementsByClassName("selectedChannel");
   if (elementToremove.length > 0) {
@@ -380,11 +374,53 @@ export function saveTransition() {
 
 // Aggiorna la label "Editing: <nome> [id: X]" sopra l'editor (TODO-3.1)
 function updateEditingLabel(channelId) {
-    var lbl = document.getElementById('editingLabel');
+    var lbl = document.getElementById('editingName');
     if (!lbl) return;
+    lbl.textContent = 'Editing: ' + _channelName(channelId) + ' [id: ' + channelId + ']';
+}
+
+function _channelName(channelId) {
     var ch = channelMixer.find(function(c) { return c.id == channelId; });
-    var name = ch ? (ch.name || String(ch.id)) : String(channelId);
-    lbl.textContent = 'Editing: ' + name + ' [id: ' + channelId + ']';
+    return ch ? (ch.name || String(ch.id)) : String(channelId);
+}
+
+function _channelTip(name, id) {
+    return (!name || name === String(id) ? 'Empty channel (id: ' + id + ')' : name) + ' — click to edit, drag to reorder';
+}
+
+// --- E3: modifiche non salvate ---
+// Codice com'era all'ultimo caricamento/salvataggio; null finché nessun canale è caricato
+var _savedCode = null;
+
+/** Il codice nell'editor corrisponde a quello salvato (chiamata dopo find_channel e save) */
+export function markClean(code) {
+    _savedCode = code === undefined ? getDoc() : code;
+    _paintDirty();
+}
+
+function isDirty() {
+    return _savedCode !== null && getDoc() !== _savedCode;
+}
+
+function _paintDirty() {
+    var m = document.getElementById('dirtyMark');
+    if (m) m.hidden = !isDirty();
+}
+
+/**
+ * Click su un canale della griglia o dalla command palette: senza autosave e con modifiche
+ * non salvate chiede prima di scartarle (prima il codice si perdeva in silenzio).
+ */
+export function selectChannelClick(channel) {
+    if (isautosave || channel == channelSelected || !isDirty()) { selectChannelLoad(channel); return; }
+    ModalPanel(
+        '<p>The code of <strong></strong> has unsaved changes. Switching channel discards them.</p>',
+        'Discard unsaved changes?',
+        'Cancel',
+        function() { selectChannelLoad(channel, true); },
+        'Discard and switch'
+    );
+    document.querySelector('#modalPanelHere strong').textContent = _channelName(channelSelected); // textContent: sicuro vs XSS
 }
 
 // Anima la progress bar per la durata della transizione (TODO-1.4)
@@ -427,23 +463,24 @@ export function deleteCurrentChannel() {
     var isLive = (channelSelected == channelLive);
 
     var bodyHtml =
-        '<p>Eliminare il canale <strong>' + channelName + '</strong>?<br>' +
-        'Questa azione è <strong>irreversibile</strong>.</p>' +
+        '<p>Delete the channel <strong>' + channelName + '</strong>?<br>' +
+        'This <strong>cannot be undone</strong>.</p>' +
         (isLive
-            ? '<p style="color:#e74c3c;font-weight:bold;">⚠ Questo canale è attualmente in LIVE.</p>'
+            ? '<p style="color:#e74c3c;font-weight:bold;"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> This channel is currently LIVE.</p>'
             : '');
 
     ModalPanel(
         bodyHtml,
-        '🗑 Elimina canale',
-        'Annulla',
+        'Delete channel',
+        'Cancel',
         function() { emit('delete_channel', channelSelected); },
-        'Elimina'
+        'Delete'
     );
 }
 
 export function initMixer(){
   emit('get_all');
+  onDocChange(_paintDirty); // E3: indicatore "unsaved" accanto a "Editing"
   // Salvataggio automatico quando l'utente cambia tipo o durata transizione
   var typeEl = document.getElementById('transitionType');
   var durEl  = document.getElementById('transitionDuration');

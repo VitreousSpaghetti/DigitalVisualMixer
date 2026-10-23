@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
     
 
     <head>
@@ -30,27 +30,18 @@
         
     </head> 
     <body  >
-        <!-- TODO-5.4: about page espansa con shortcut, architettura, route -->
+        <!-- TODO-5.4: about page con architettura e route (shortcut nella Guida, UX_GUIDA) -->
         <div class="container-fluid" style="max-width:860px;margin:40px auto;">
           <div class="VitreousWelcome" style="font-size:1em;">
             <h2 style="color:#fff;">Digital Visual Mixer — Vitreous</h2>
-            <p>Web mixer live per performance visive basato su <a href="https://hydra.ojack.xyz/" target="_blank">Hydra</a>.
-            Autore: <a href="https://www.instagram.com/vitreous_spaghetti" target="_blank">@vitreous_spaghetti</a></p>
+            <p>Live web mixer for visual performances, based on <a href="https://hydra.ojack.xyz/" target="_blank">Hydra</a>.
+            Author: <a href="https://www.instagram.com/vitreous_spaghetti" target="_blank">@vitreous_spaghetti</a></p>
+            <!-- UX_GUIDA: shortcut e spiegazioni vivono solo nella Guida del mixer (nessun testo duplicato) -->
+            <p>Shortcuts, concepts and troubleshooting: open the mixer and press <kbd>F1</kbd> (Guide).</p>
 
             <hr style="border-color:#555;">
 
-            <h4 style="color:#ccc;">Shortcut da tastiera</h4>
-            <table style="width:100%;border-collapse:collapse;color:#ccc;font-size:0.9em;">
-              <tr><td style="padding:4px 8px;"><kbd>Ctrl + Enter</kbd></td><td>Preview locale (non in live)</td></tr>
-              <tr><td style="padding:4px 8px;"><kbd>Ctrl + ↑</kbd></td><td>Salva il canale corrente</td></tr>
-              <tr><td style="padding:4px 8px;"><kbd>Ctrl + ↓</kbd></td><td>Salva e manda in live</td></tr>
-              <tr><td style="padding:4px 8px;"><kbd>Ctrl + ←</kbd></td><td>Canale live precedente</td></tr>
-              <tr><td style="padding:4px 8px;"><kbd>Ctrl + →</kbd></td><td>Canale live successivo</td></tr>
-            </table>
-
-            <hr style="border-color:#555;">
-
-            <h4 style="color:#ccc;">Architettura</h4>
+            <h4 style="color:#ccc;">Architecture</h4>
             <pre style="color:#9c9;font-size:0.8em;background:#111;padding:10px;border-radius:4px;">
 Browser (Mixer :8080/)          Browser (/live)
   CodeMirror editor           Hydra canvas fullscreen
@@ -65,19 +56,19 @@ Browser (Mixer :8080/)          Browser (/live)
 
             <hr style="border-color:#555;">
 
-            <h4 style="color:#ccc;">Route disponibili</h4>
+            <h4 style="color:#ccc;">Routes</h4>
             <ul style="color:#ccc;font-size:0.9em;">
-              <li><code>/</code> oppure <code>/mixer</code> — Pannello di controllo</li>
-              <li><code>/live</code> — Output proiettore/schermo esterno (<code>?fit=cover</code> per fullscreen senza bande)</li>
-              <li><code>/about</code> — Questa pagina</li>
+              <li><code>/</code> oppure <code>/mixer</code> — Control panel</li>
+              <li><code>/live</code> — Projector / external screen output (<code>?fit=cover</code> for fullscreen without bars)</li>
+              <li><code>/about</code> — This page</li>
             </ul>
 
             <hr style="border-color:#555;">
 
             <h4 style="color:#ccc;">Link</h4>
             <ul style="color:#ccc;">
-              <li><a href="https://hydra.ojack.xyz/api/" target="_blank">Hydra API Docs ↗</a></li>
-              <li><a href="./mixer" class="btn btn-sm btn-primary mt-2">→ Vai al Mixer</a></li>
+              <li><a href="https://hydra.ojack.xyz/api/" target="_blank">Hydra API Docs</a></li>
+              <li><a href="./mixer" class="btn btn-sm btn-primary mt-2">Go to the Mixer</a></li>
             </ul>
           </div>
         </div>

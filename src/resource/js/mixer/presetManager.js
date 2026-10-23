@@ -135,23 +135,25 @@ export function renderPresetPanel() {
         var btnGroup = document.createElement('span');
         btnGroup.style.cssText = 'display:flex;align-items:center;gap:4px;flex-shrink:0;';
 
-        // Bottone ▶ — applica preset
+        // Bottone play — applica preset
         var applyBtn = document.createElement('button');
-        applyBtn.textContent = '▶';
-        applyBtn.title = 'Applica preset "' + (preset.name || preset.id) + '"';
+        applyBtn.innerHTML = '<i class="fa-solid fa-play" aria-hidden="true"></i>';
+        applyBtn.dataset.tip = 'Apply preset "' + (preset.name || preset.id) + '": loads its channel, variables and transition (does not go live)';
+        applyBtn.setAttribute('aria-label', 'Apply preset ' + (preset.name || preset.id));
         applyBtn.style.cssText = 'background:#1a4a1a;border:1px solid #3a9a3a;color:#aaffaa;cursor:pointer;font-size:0.85em;padding:1px 5px;border-radius:3px;';
         applyBtn.addEventListener('click', (function(p) {
             return function() { applyPreset(p); };
         })(preset));
 
-        // Bottone × — elimina preset
+        // Bottone cestino — elimina preset
         var delBtn = document.createElement('button');
-        delBtn.textContent = '×';
-        delBtn.title = 'Elimina preset "' + (preset.name || preset.id) + '"';
+        delBtn.innerHTML = '<i class="fa-solid fa-trash" aria-hidden="true"></i>';
+        delBtn.dataset.tip = 'Delete preset "' + (preset.name || preset.id) + '"';
+        delBtn.setAttribute('aria-label', 'Delete preset ' + (preset.name || preset.id));
         delBtn.style.cssText = 'background:none;border:none;color:#9a3a3a;cursor:pointer;font-size:1em;padding:0 2px;';
         delBtn.addEventListener('click', (function(id, name) {
             return function() {
-                if (confirm('Eliminare il preset "' + name + '"?')) {
+                if (confirm('Delete the preset "' + name + '"?')) {
                     if (_emit) _emit('delete_preset', id);
                 }
             };

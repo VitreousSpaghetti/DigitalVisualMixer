@@ -122,7 +122,11 @@ div.height90  { height: 100%; }
 .spacingRow { padding: 10px 0px; }
 .code { background: #282a36; }
 .mix  { background: #505050; }
-.tv   { padding-top: 10px; }
+/* Preview ridimensionabile trascinando l'angolo in basso a destra (resize nativo); max-width
+   = la dimensione piena di prima. Solo orizzontale: l'altezza segue l'aspect-ratio del canvas. */
+.tv   { padding-top: 10px; position: relative; resize: horizontal; overflow: hidden; max-width: 100%; min-width: 120px; }
+/* FFT audio di Hydra (spostato qui da hydraManager.js): !important batte gli stili inline della libreria */
+.tv > .audio-fft { top: 13px !important; right: calc(var(--bs-gutter-x, 1.5rem) * .5 + 3px) !important; bottom: auto !important; pointer-events: none; }
 .tv #hydra-canvas { border: 3px solid white; background: black; }
 .button-channel {}
 .channel-btn { font-size: 0.78em; }
@@ -194,10 +198,11 @@ a.dropdown-item { color: #ababab; }
 
 /* ---- Sezioni comprimibili (RF10) ---- */
 .section-head[data-collapse] { cursor: pointer; user-select: none; }
+/* UX_GUIDA RF-A1: chevron Font Awesome (chevron-down / chevron-right) invece di ▾ ▸ */
 .section-head[data-collapse] .col:first-child::before,
-.section-head[data-collapse] .col-12::before { content: '▾ '; color: #888; }
+.section-head[data-collapse] .col-12::before { content: '\f078'; font-family: 'Font Awesome 6 Free'; font-weight: 900; font-size: 0.7em; color: #888; margin-right: 6px; }
 .section-head.is-collapsed .col:first-child::before,
-.section-head.is-collapsed .col-12::before { content: '▸ '; }
+.section-head.is-collapsed .col-12::before { content: '\f054'; }
 .collapsed { display: none !important; }
 
 /* ---- Controllo variabile (sidebar + Perform) e righe evidenziate quando la sorgente si muove (RF7) ---- */
@@ -233,7 +238,7 @@ a.dropdown-item { color: #ababab; }
 .mm-table tr { border-left: 3px solid transparent; }
 .mm-key { font-family: monospace; color: #4a9eff; }
 .mm-conflict td:first-child { color: #ffb74d; }
-.mm-conflict td:first-child::before { content: '⚠ '; }
+.mm-conflict td:first-child::before { content: '\f071'; font-family: 'Font Awesome 6 Free'; font-weight: 900; margin-right: 4px; } /* triangle-exclamation */
 .mm-actions { white-space: nowrap; text-align: right; }
 .mm-empty { color: #666; text-align: center; padding: 12px; }
 .mm-editor { background: #1a1a2a; border: 1px solid #4a7aaa; padding: 10px; margin-bottom: 10px; }
@@ -264,3 +269,76 @@ body.perform-mode .mix > #performPanel { display: block !important; overflow-y: 
 .pad { min-height: 64px; color: #fff; font-size: 1em; padding: 6px !important; overflow: hidden; }
 .pad:hover { background: #4a4a4a !important; }
 .pad.pad-live { background: #740000 !important; border-color: #ff1744 !important; }
+
+/* ==== UX_GUIDA (af/UX_GUIDA.md) ==== */
+
+/* Tooltip unico (uiHelp.js): classi Bootstrap .tooltip/.tooltip-inner per lo stesso aspetto,
+   position fixed perché viene posizionato a mano; pre-line per gli elenchi dispositivi */
+.dvm-tip { position: fixed; pointer-events: none; }
+.dvm-tip .tooltip-inner { max-width: 340px; white-space: pre-line; text-align: left; }
+
+/* Posizione knob in soft takeover: icona diamond FA prima del valore (macroVarManager._ctrlText) */
+.var-ctrl:not(:empty)::before { content: '\f219'; font-family: 'Font Awesome 6 Free'; font-weight: 900; font-size: 0.75em; margin-right: 2px; }
+
+/* Bottoni compatti degli header: solo icona + tooltip (RF-A2), colori semantici (RF-A4) */
+.head-btn { padding: 1px 7px !important; font-size: 0.8em; color: #fff; background: #3a3a3a !important; border-color: #555 !important; }
+.head-add { background: #2e6e2e !important; border-color: #3a9a3a !important; }
+.head-del { background: #6e2e2e !important; border-color: #9a3a3a !important; }
+/* !important: la regola globale `button` (riga 11) forza sfondo e bordo su tutti i bottoni */
+.help-btn { background: none !important; border: none !important; color: #777; padding: 0 3px; font-size: 0.85em; cursor: pointer; }
+.help-btn:hover, .help-btn:focus { color: #4a9eff; }
+.mm-add { color: #8f8 !important; }
+.learn-dot { color: #ff1744; }
+
+.dropdown-item kbd, .btn kbd { font-size: 0.75em; opacity: 0.6; margin-left: 6px; }
+.dropdown-header { color: #777; font-size: 0.7em; text-transform: uppercase; letter-spacing: 0.05em; }
+.dropdown-item .fa-fw, .ctx-ico .fa-solid { color: #9ab; }
+.as-indicator { cursor: pointer; }
+.search-wrap { display: flex; align-items: center; gap: 6px; color: #666; padding-left: 6px !important; }
+.dirty-mark { color: #ff9800; font-style: normal; margin-left: 8px; }
+.dirty-mark .fa-circle { font-size: 0.6em; vertical-align: middle; }
+.live-badge .fa-circle { font-size: 0.7em; }
+.fn-signature { font-family: monospace; font-size: 0.85em; color: #aaa; white-space: pre-wrap; margin-bottom: 6px; }
+
+/* Firma Hydra al passaggio del mouse nell'editor (E5) */
+.cm-hydra-hover { font-family: monospace; font-size: 0.85em; padding: 3px 8px; background: #111; color: #ddd; }
+
+/* Menu contestuale editor (contextMenu.js) e command palette (palette.js): stesso stile di riga */
+.ctx-menu { position: fixed; z-index: 10050; list-style: none; margin: 0; padding: 4px 0; min-width: 220px;
+  max-height: calc(100vh - 8px); overflow-y: auto; background: #252526; border: 1px solid #555;
+  border-radius: 4px; box-shadow: 0 4px 14px rgba(0,0,0,0.6); font-size: 0.85rem; color: #ddd; }
+.ctx-item, .cmd-list li { display: flex; align-items: center; gap: 8px; padding: 4px 12px; cursor: pointer; white-space: nowrap; outline: none; }
+.ctx-item.active, .cmd-list li.active, .cmd-list li:hover { background: #094771; color: #fff; }
+.ctx-item.disabled { color: #666; cursor: default; }
+.ctx-item.disabled.active { background: #333; }
+.ctx-ico { width: 1.2em; text-align: center; }
+.ctx-label { flex: 1; }
+.ctx-hint { color: #888; font-size: 0.85em; font-family: monospace; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.ctx-arrow { color: #888; font-size: 0.8em; }
+.ctx-sep { height: 1px; background: #444; margin: 4px 0; }
+
+.cmd-palette { position: fixed; inset: 0; z-index: 10040; background: rgba(0,0,0,0.45); display: flex; justify-content: center; align-items: flex-start; padding-top: 12vh; }
+.cmd-box { width: min(640px, 92vw); background: #252526; border: 1px solid #555; border-radius: 6px; box-shadow: 0 8px 30px rgba(0,0,0,0.7); color: #ddd; }
+.cmd-input-row { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid #444; color: #888; }
+.cmd-input { flex: 1; background: transparent; border: none; color: #fff; outline: none; font-size: 1rem; }
+.cmd-list { list-style: none; margin: 0; padding: 4px 0; max-height: 50vh; overflow-y: auto; font-size: 0.88rem; }
+
+/* Guida (guideManager.js) */
+.guide .modal-content { background: #1e1e1e; border: 1px solid #444; color: #ddd; }
+.guide .modal-header { border-bottom: 1px solid #333; padding: 8px 16px; }
+.guide-body { display: flex; gap: 16px; }
+.guide-index { flex: 0 0 210px; display: flex; flex-direction: column; gap: 2px; position: sticky; top: 0; align-self: flex-start; }
+.guide-index input { margin-bottom: 8px; }
+.guide-index a { color: #aaa; text-decoration: none; padding: 3px 6px; border-radius: 3px; font-size: 0.88em; }
+.guide-index a:hover, .guide-index a.active { background: #094771; color: #fff; }
+.guide-content { flex: 1; min-width: 0; font-size: 0.92em; }
+.guide-content section { margin-bottom: 22px; scroll-margin-top: 8px; }
+.guide-content h5 { color: #fff; border-bottom: 1px solid #333; padding-bottom: 4px; }
+.guide-content h6 { color: #ccc; margin-top: 12px; }
+.guide-content code { color: #9cdcfe; }
+.guide-table { width: 100%; border-collapse: collapse; }
+.guide-table td { padding: 3px 8px; border-bottom: 1px solid #2c2c2c; vertical-align: top; }
+.guide-fn td:nth-child(2) { color: #888; font-family: monospace; font-size: 0.85em; }
+
+/* La regola globale `button` cancellava l'icona X di Bootstrap: la ripristina (svg di Bootstrap 5.0.2) */
+button.btn-close { background: transparent url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23000'%3e%3cpath d='M.293.293a1 1 0 011.414 0L8 6.586 14.293.293a1 1 0 111.414 1.414L9.414 8l6.293 6.293a1 1 0 01-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 01-1.414-1.414L6.586 8 .293 1.707a1 1 0 010-1.414z'/%3e%3c/svg%3e") center/1em auto no-repeat !important; border: 0 !important; }

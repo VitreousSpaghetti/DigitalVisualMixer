@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 
 <head>
   <title>Digital Mixer Vitreous</title>
@@ -18,7 +18,9 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
     integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
     crossorigin="anonymous"></script>
- 
+  <!-- UX_GUIDA RF-A5: Font Awesome servito in locale da app.js (uso live anche senza rete) -->
+  <link rel="stylesheet" href="/dist/fontawesome/css/all.min.css">
+
   <!-- PERFORM RF1: window.M + processMacroVars (script classico condiviso con live.html) -->
   <script src="./src/resource/js/macroLive.js"></script>
   <script src="./src/resource/js/deckManager.js" defer type="module" defer></script>
@@ -40,7 +42,7 @@
 <body style="margin: 0;">
 <!-- Banner disconnessione socket - TODO-6.2 -->
 <div id="disconnectBanner" style="display:none;position:fixed;top:0;left:0;width:100%;z-index:9999;background:#c0392b;color:#fff;padding:6px 16px;font-weight:bold;align-items:center;gap:8px;">
-  ⚠ Server disconnesso — le operazioni non vengono salvate
+  <i class="fa-solid fa-plug-circle-xmark" aria-hidden="true"></i> Server disconnected — changes are not being saved
 </div>
   <div id="hydra-ui" class="height100" style="position: absolute;">
     <div class="container-fluid height100">
@@ -49,56 +51,51 @@
           <div class="container-fluid">
             <div class="collapse navbar-collapse" id="navbarNavDropdown">
               <ul class="navbar-nav">
+                <!-- UX_GUIDA E2: voci raggruppate per Channel / Output / Data; ogni voce icona + tooltip (A, B) -->
                 <li class="nav-item dropdown">
                   <a class="nav-link dropdown-toggle" href="#" id="dropdownMenuButtonOption" role="button"
-                    data-bs-toggle="dropdown" aria-expanded="false"> 
+                    data-bs-toggle="dropdown" aria-expanded="false" data-tip="Save, go live, output window, database">
                     Visual Deck
                   </a>
                   <ul class="dropdown-menu" aria-labelledby="dropdownMenuButtonOption">
-                    <li><a class="dropdown-item" onclick="autosave()" id="Autosave">⟳ Autosave</a></li>
-                    <li><a class="dropdown-item" onclick="selectActionExec('save')">↑ Save <kbd style="font-size:0.75em;opacity:0.6">Ctrl+↑</kbd></a></li>
+                    <li><h6 class="dropdown-header">Channel</h6></li>
+                    <li><a class="dropdown-item" onclick="selectActionExec('save')" data-tip="Save the code into the channel being edited"><i class="fa-solid fa-floppy-disk fa-fw" aria-hidden="true"></i> Save <kbd data-sc="save"></kbd></a></li>
                     <!-- TODO-3.3: colore prominente per Save and Run (operazione live) -->
-                    <li><a class="dropdown-item saverun-item" onclick="selectActionExec('saverun')">▶ Save and Run <kbd style="font-size:0.75em;opacity:0.6">Ctrl+↓</kbd></a></li>
-                    <li><a class="dropdown-item" onclick="window.open('./live?fit=cover','winname','directories=no,titlebar=no,toolbar=no,location=no,status=no,menubar=no,scrollbars=no,resizable=no,width=400,height=350')">⎋ Live</a></li>
-                    <!-- TODO-5.3: rinominato da "Api" con target blank -->
-                    <li><a class="dropdown-item" onclick="window.open(apiLink,'_blank')" target="_blank">Hydra API Docs ↗</a></li>
+                    <li><a class="dropdown-item saverun-item" onclick="selectActionExec('saverun')" data-tip="Save the channel and send it to the live output"><i class="fa-solid fa-tower-broadcast fa-fw" aria-hidden="true"></i> Save and Run</a></li>
+                    <li><a class="dropdown-item" onclick="selectActionExec('run')" data-tip="Send the channel being edited to live, without saving"><i class="fa-solid fa-tower-broadcast fa-fw" aria-hidden="true"></i> Send to live <kbd data-sc="run"></kbd></a></li>
+                    <li><a class="dropdown-item" onclick="autosave()" id="Autosave" data-tip="When on, the channel is saved automatically when you switch to another one"><i class="fa-solid fa-rotate fa-fw" aria-hidden="true"></i> Autosave</a></li>
                     <li><hr class="dropdown-divider" style="border-color:#555;"></li>
-                    <li><a class="dropdown-item" onclick="exportDb()">↓ Export DB</a></li>
-                    <li><a class="dropdown-item" onclick="document.getElementById('importDbInput').click()">↑ Import DB</a></li>
+                    <li><h6 class="dropdown-header">Output</h6></li>
+                    <li><a class="dropdown-item" onclick="openLiveWindow()" data-tip="Open the live output window: move it to the projector or external screen"><i class="fa-solid fa-up-right-from-square fa-fw" aria-hidden="true"></i> Open Live window</a></li>
+                    <li><hr class="dropdown-divider" style="border-color:#555;"></li>
+                    <li><h6 class="dropdown-header">Data</h6></li>
+                    <li><a class="dropdown-item" onclick="exportDb()" data-tip="Download all channels, mappings and presets as db.json"><i class="fa-solid fa-file-export fa-fw" aria-hidden="true"></i> Export DB</a></li>
+                    <li><a class="dropdown-item" onclick="document.getElementById('importDbInput').click()" data-tip="Replace all data with a db.json file (the page reloads)"><i class="fa-solid fa-file-import fa-fw" aria-hidden="true"></i> Import DB</a></li>
                     <input type="file" id="importDbInput" accept=".json" style="display:none" onchange="importDb(event)">
                   </ul>
                 </li>
-                <!--<li class="nav-item">
-                  <a class="nav-link" href="#">Channel</a>
-                </li>-->
                 <li class="nav-item dropdown">
                   <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button"
-                    data-bs-toggle="dropdown" aria-expanded="false">
+                    data-bs-toggle="dropdown" aria-expanded="false" data-tip="Hydra functions by category: preview and insert into the editor (also right-click in the editor)">
                     Hydra Function
                   </a>
                   <ul class="dropdown-menu" id="functionManager" aria-labelledby="navbarDropdownMenuLink">
-                    
+
                   </ul>
                 </li>
-                <!--
-                <li class="nav-item">
-                  <a class="nav-link" onclick="Sequence()" id="Sequence"> Sequence</a>
-                </li> -->
-                <!--
-                <li class="nav-item">
-                  <a class="nav-link" href="#">Transition</a>
-                </li>-->
                 <li class="nav-item dropdown">
                   <a class="nav-link dropdown-toggle" href="#" id="navbarTransitionLink" role="button"
-                    data-bs-toggle="dropdown" aria-expanded="false">
-                    Transition
+                    data-bs-toggle="dropdown" aria-expanded="false" data-tip="How the live output changes channel">
+                    <i class="fa-solid fa-shuffle" aria-hidden="true"></i> Transition
                   </a>
                   <ul class="dropdown-menu" aria-labelledby="navbarTransitionLink" style="padding: 8px 12px; min-width: 200px;">
                     <li>
                       <div class="mb-2">
-                        <label style="color:#ababab; font-size:0.85em;">Type</label>
+                        <label style="color:#ababab; font-size:0.85em;">Type
+                          <button type="button" class="help-btn" data-help="concepts-transitions" data-tip="Help: Transitions" aria-label="Help: Transitions"><i class="fa-solid fa-circle-question" aria-hidden="true"></i></button>
+                        </label>
                         <select id="transitionType" class="form-select form-select-sm"
-                          style="background:#363636; color:#fff; border:1px solid #555;">
+                          style="background:#363636; color:#fff; border:1px solid #555;" data-tip="Cut = instant, Crossfade = blend, Add = sum of the two channels">
                           <option value="cut">Cut</option>
                           <option value="crossfade">Crossfade</option>
                           <option value="add">Add</option>
@@ -110,34 +107,46 @@
                         <label style="color:#ababab; font-size:0.85em;">Duration (ms)</label>
                         <input type="number" id="transitionDuration" value="1000" min="100" max="10000" step="100"
                           class="form-control form-control-sm"
-                          style="background:#363636; color:#fff; border:1px solid #555;">
+                          style="background:#363636; color:#fff; border:1px solid #555;" data-tip="Transition length in milliseconds">
                       </div>
                     </li>
                   </ul>
                 </li>
+                <!-- PERFORM RF9: gestione Mappings (tabella + tab Preset); E1: un solo nome "Mappings" -->
                 <li class="nav-item">
-                  <a class="nav-link" href="/about">About</a>
+                  <a class="nav-link" href="#" onclick="selectActionExec('openMacroManager')" data-tip="Mappings manager: connect MIDI, gamepad and keyboard to variables and actions"><i class="fa-solid fa-sliders" aria-hidden="true"></i> Mappings</a>
                 </li>
-                <li class="nav-item">
-                  <a class="nav-link" onclick="selectActionExec('showMacro')">Help</a>
-                </li>
-                <!-- PERFORM RF9: Macro Manager (tabella Mappature + tab Preset) -->
-                <li class="nav-item">
-                  <a class="nav-link" onclick="selectActionExec('openMacroManager')">Macro</a>
+                <!-- UX_GUIDA E2: Guida, shortcut, docs e About in un unico menu ? -->
+                <li class="nav-item dropdown">
+                  <a class="nav-link dropdown-toggle" href="#" id="navbarHelpLink" role="button"
+                    data-bs-toggle="dropdown" aria-expanded="false" data-tip="Guide, shortcuts, Hydra docs, About" aria-label="Help">
+                    <i class="fa-solid fa-circle-question" aria-hidden="true"></i>
+                  </a>
+                  <ul class="dropdown-menu" aria-labelledby="navbarHelpLink">
+                    <li><a class="dropdown-item" onclick="selectActionExec('guide')" data-tip="Getting started, concepts, troubleshooting"><i class="fa-solid fa-circle-question fa-fw" aria-hidden="true"></i> Guide <kbd data-sc="guide"></kbd></a></li>
+                    <li><a class="dropdown-item" onclick="selectActionExec('shortcuts')" data-tip="All keyboard shortcuts"><i class="fa-solid fa-keyboard fa-fw" aria-hidden="true"></i> Shortcuts</a></li>
+                    <li><a class="dropdown-item" onclick="selectActionExec('palette')" data-tip="Search any action, channel, preset or function by name"><i class="fa-solid fa-magnifying-glass fa-fw" aria-hidden="true"></i> Command palette <kbd data-sc="palette"></kbd></a></li>
+                    <li><hr class="dropdown-divider" style="border-color:#555;"></li>
+                    <!-- TODO-5.3: rinominato da "Api" con target blank -->
+                    <li><a class="dropdown-item" onclick="window.open(apiLink,'_blank')" data-tip="Official Hydra API documentation (opens a new tab)"><i class="fa-solid fa-arrow-up-right-from-square fa-fw" aria-hidden="true"></i> Hydra API Docs</a></li>
+                    <li><a class="dropdown-item" href="/about" data-tip="About Digital Visual Mixer"><i class="fa-solid fa-circle-info fa-fw" aria-hidden="true"></i> About</a></li>
+                  </ul>
                 </li>
               </ul>
             </div>
             <!-- PERFORM RF8: toggle Edit/Perform (anche F2), gestito da performManager.js -->
-            <button id="performToggle" class="btn btn-sm perform-toggle">▶ Perform (F2)</button>
+            <button id="performToggle" class="btn btn-sm perform-toggle" data-sc="perform"
+              data-tip="Perform view: big preview, variable bars, channel and preset pads"><i class="fa-solid fa-circle-play" aria-hidden="true"></i> Perform</button>
             <!-- PERFORM RF7: ultima sorgente ricevuta; click su una sorgente non mappata → nuova mappatura -->
-            <span id="inputMonitor" class="input-monitor" title="Ultimo input da MIDI / gamepad / tastiera">— nessun input —</span>
+            <span id="inputMonitor" class="input-monitor" data-tip="Last input received from MIDI / gamepad / keyboard">— no input —</span>
             <!-- PERFORM RF5: stato dispositivi (tooltip = elenco); MIDI negato → click per riattivare -->
-            <span id="midiStatus" class="dev-status dev-off">MIDI …</span>
-            <span id="padStatus" class="dev-status dev-off">🎮 …</span>
+            <span id="midiStatus" class="dev-status dev-off" aria-label="MIDI"><i class="fa-solid fa-music" aria-hidden="true"></i> …</span>
+            <span id="padStatus" class="dev-status dev-off" aria-label="Gamepad"><i class="fa-solid fa-gamepad" aria-hidden="true"></i> …</span>
             <!-- Badge canale live - TODO-1.1 -->
-            <span id="liveBadge" class="live-badge ms-auto">● LIVE: —</span>
+            <span id="liveBadge" class="live-badge ms-auto" data-tip="Channel currently on the live output"><i class="fa-solid fa-circle" aria-hidden="true"></i> LIVE: <span class="live-name">—</span></span>
             <!-- Indicatore autosave - TODO-1.3 -->
-            <span id="autosaveIndicator" class="as-indicator as-off" title="Autosave OFF">AS●</span>
+            <span id="autosaveIndicator" class="as-indicator as-off" onclick="autosave()" role="button"
+              data-tip="Autosave is OFF — click to toggle"><i class="fa-solid fa-rotate" aria-hidden="true"></i> AS</span>
           </div>
         </nav>
       </div>
@@ -145,8 +154,10 @@
       <div id="transProgressBar" class="trans-progress-bar"></div>
       <div class="row height97">
         <div class=" col-md-8 height100 code">
-          <!-- Label canale in editing - TODO-3.1 -->
-          <div id="editingLabel" class="editing-label">Editing: —</div>
+          <!-- Label canale in editing - TODO-3.1; E3: indicatore modifiche non salvate -->
+          <div id="editingLabel" class="editing-label"><span id="editingName">Editing: —</span>
+            <span id="dirtyMark" class="dirty-mark" hidden data-tip="Unsaved changes" data-sc="save"><i class="fa-solid fa-circle" aria-hidden="true"></i> unsaved</span>
+          </div>
           <div class="row height90 ">
             <div class="col-12 height100" id="codejs">
             </div>
@@ -155,83 +166,86 @@
           <div id="hydraErrorPanel" style="display:none;" class="hydra-error-panel"></div>
           <div class="row spacingRow  justify-content-end ">
             <div style="text-align:center" class=" col-3  ">
-              <input type="text" id="channelName" name="channelName">
+              <input type="text" id="channelName" name="channelName" data-tip="Channel name (saved with Save)" aria-label="Channel name">
             </div>
             <div style="text-align:center" class="col-3">
               <!-- TODO-3.2: rinominato da "Show" con hint locale -->
               <button style="width:90%" id="prev" onclick="selectActionExec('prev')"
-                class="btn btn-primary" title="Esegui localmente, non in live">▶ Preview (Ctrl+Enter)</button>
-              <small class="d-block text-muted" style="font-size:0.65em;color:#777!important;">Locale, non live</small>
+                class="btn btn-primary" data-tip="Run the code in the Local Preview only: the live output does not change" data-sc="prev"><i class="fa-solid fa-play" aria-hidden="true"></i> Preview <kbd data-sc="prev"></kbd></button>
+              <small class="d-block text-muted" style="font-size:0.65em;color:#777!important;">Local only, not live</small>
             </div>
           </div>
         </div>
         <div class="col-md-4 mix">
-          <!-- PERFORM RF10: header comprimibili [data-collapse] (sostituisce il vecchio Hide Preview) -->
-          <div class="multychannel section-head" data-collapse="previewRow" title="Comprimi/espandi">
+          <!-- PERFORM RF10: header comprimibili [data-collapse]; UX_GUIDA RF-D2: ? apre la Guida sulla sezione -->
+          <div class="multychannel section-head" data-collapse="previewRow" data-tip="Collapse / expand">
             <div class="row spacingRow">
               <div style="text-align:left" class=" col-12">
-                Local Preview
+                <i class="fa-solid fa-eye" aria-hidden="true"></i> Local Preview
+                <button type="button" class="help-btn" data-help="concepts-preview" data-tip="Help: Local preview vs live" aria-label="Help: Local preview"><i class="fa-solid fa-circle-question" aria-hidden="true"></i></button>
               </div>
             </div>
           </div>
           <div class="row" id="previewRow">
             <div class=" tv col-12">
-              <canvas id="hydra-canvas"  
+              <canvas id="hydra-canvas"
               style="imageRendering:pixelated;
                             width: 100%;
-                            height: 100%;  
+                            height: 100%;
                             aspect-ratio: auto 1920 / 929;"> </canvas>
             </div>
           </div>
 
-          <div class="multychannel section-head" data-collapse="channelsBody" title="Comprimi/espandi">
+          <div class="multychannel section-head" data-collapse="channelsBody" data-tip="Collapse / expand">
             <div class="row spacingRow align-items-center">
               <div class="col" style="text-align:left;">
-                Channels
+                <i class="fa-solid fa-table-cells" aria-hidden="true"></i> Channels
+                <button type="button" class="help-btn" data-help="concepts-channels" data-tip="Help: Channels" aria-label="Help: Channels"><i class="fa-solid fa-circle-question" aria-hidden="true"></i></button>
               </div>
               <!-- Bottoni aggiungi/elimina canale — allineati a destra della label Channels -->
               <div class="col-auto" style="padding-right:6px;">
-                <button class="btn btn-sm"
-                  style="padding:1px 7px;font-size:0.8em;background:#2e6e2e!important;border-color:#3a9a3a!important;color:#fff;"
-                  onclick="selectActionExec('addChannel')" title="Aggiungi nuovo canale vuoto">+</button>
-                <button class="btn btn-sm ms-1"
-                  style="padding:1px 7px;font-size:0.8em;background:#6e2e2e!important;border-color:#9a3a3a!important;color:#fff;"
-                  onclick="selectActionExec('deleteChannel')" title="Elimina canale in editing">🗑</button>
+                <button class="btn btn-sm head-btn head-add"
+                  onclick="selectActionExec('addChannel')" data-tip="Add a new empty channel" aria-label="Add channel"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>
+                <button class="btn btn-sm ms-1 head-btn head-del"
+                  onclick="selectActionExec('deleteChannel')" data-tip="Delete the channel being edited" aria-label="Delete channel"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>
               </div>
             </div>
           </div>
           <div id="channelsBody">
             <!-- TODO-2.4: campo ricerca canali -->
-            <div class="multychannel" style="max-height:none;overflow:visible;padding:4px 0;">
+            <div class="multychannel search-wrap" style="max-height:none;overflow:visible;padding:4px 0;">
+              <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
               <input type="search" id="channelSearch" class="form-control form-control-sm channel-search"
-                placeholder="🔍 Cerca canale…" autocomplete="off">
+                placeholder="Search channel…" autocomplete="off" aria-label="Search channel">
             </div>
-            <div class="multychannel" title="change the channel workplace" id="multychannel">
+            <div class="multychannel" id="multychannel">
             </div>
           </div>
 
           <!-- Macro Variables Panel — visibile solo se esistono macro variabili nel DB -->
           <div class="multychannel" id="macroPanel" style=";padding:4px 0;">
-            <div class="row spacingRow align-items-center section-head" data-collapse="macroSliders" title="Comprimi/espandi">
-              <div class="col" style="text-align:left;">Macro Variables</div>
+            <div class="row spacingRow align-items-center section-head" data-collapse="macroSliders" data-tip="Collapse / expand">
+              <div class="col" style="text-align:left;"><i class="fa-solid fa-wave-square" aria-hidden="true"></i> Macro Variables
+                <button type="button" class="help-btn" data-help="concepts-variables" data-tip="Help: Macro variables" aria-label="Help: Macro variables"><i class="fa-solid fa-circle-question" aria-hidden="true"></i></button>
+              </div>
               <div class="col-auto" style="padding-right:6px;">
-                <button class="btn btn-sm"
-                  style="padding:1px 7px;font-size:0.8em;background:#2e6e2e!important;border-color:#3a9a3a!important;color:#fff;"
-                  onclick="selectActionExec('addMacroVar')" title="Aggiungi nuova macro variabile">+</button>
+                <button class="btn btn-sm head-btn head-add"
+                  onclick="selectActionExec('addMacroVar')" data-tip="Add a new macro variable" aria-label="Add macro variable"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>
               </div>
             </div>
             <!-- Slider generati da macroVarManager.js → renderMacroPanel(); gestione nel Macro Manager -->
             <div id="macroSliders" style="padding:2px 8px;"></div>
           </div>
 
-          <!-- Mappature attive (PERFORM RF10): lista compatta in sola lettura, gestione nel Macro Manager -->
+          <!-- Mappings attive (PERFORM RF10): lista compatta in sola lettura, gestione nel Macro Manager -->
           <div class="multychannel" id="macroActionsPanel" style=";padding:4px 0;">
-            <div class="row spacingRow align-items-center section-head" data-collapse="macroActionsList" title="Comprimi/espandi">
-              <div class="col" style="text-align:left;">Mappature</div>
+            <div class="row spacingRow align-items-center section-head" data-collapse="macroActionsList" data-tip="Collapse / expand">
+              <div class="col" style="text-align:left;"><i class="fa-solid fa-sliders" aria-hidden="true"></i> Mappings
+                <button type="button" class="help-btn" data-help="concepts-mappings" data-tip="Help: Mappings" aria-label="Help: Mappings"><i class="fa-solid fa-circle-question" aria-hidden="true"></i></button>
+              </div>
               <div class="col-auto" style="padding-right:6px;">
-                <button class="btn btn-sm"
-                  style="padding:1px 7px;font-size:0.8em;background:#2e6e2e!important;border-color:#3a9a3a!important;color:#fff;"
-                  onclick="selectActionExec('openMacroManager')" title="Apri il Macro Manager">⚙</button>
+                <button class="btn btn-sm head-btn"
+                  onclick="selectActionExec('openMacroManager')" data-tip="Open the Mappings manager" aria-label="Open the Mappings manager"><i class="fa-solid fa-sliders" aria-hidden="true"></i></button>
               </div>
             </div>
             <!-- Lista generata da macroManager.js → renderActionPanel() -->
@@ -240,12 +254,13 @@
 
           <!-- Preset Panel — visibile solo se esistono preset nel DB; generato da presetManager.js -->
           <div class="multychannel" id="presetPanel" style=";padding:4px 0;">
-            <div class="row spacingRow align-items-center section-head" data-collapse="presetList" title="Comprimi/espandi">
-              <div class="col" style="text-align:left;">Preset</div>
+            <div class="row spacingRow align-items-center section-head" data-collapse="presetList" data-tip="Collapse / expand">
+              <div class="col" style="text-align:left;"><i class="fa-solid fa-bookmark" aria-hidden="true"></i> Presets
+                <button type="button" class="help-btn" data-help="concepts-presets" data-tip="Help: Presets" aria-label="Help: Presets"><i class="fa-solid fa-circle-question" aria-hidden="true"></i></button>
+              </div>
               <div class="col-auto" style="padding-right:6px;">
-                <button class="btn btn-sm"
-                  style="padding:1px 7px;font-size:0.8em;background:#2e6e2e!important;border-color:#3a9a3a!important;color:#fff;"
-                  onclick="selectActionExec('addPreset')" title="Salva stato corrente come preset">+</button>
+                <button class="btn btn-sm head-btn head-add"
+                  onclick="selectActionExec('addPreset')" data-tip="Save the current state (channel, variables, transition) as a preset" aria-label="Save preset"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>
               </div>
             </div>
             <!-- Lista preset generata dinamicamente da presetManager.js → renderPresetPanel() -->
@@ -254,76 +269,12 @@
 
           <!-- Vista Perform (PERFORM RF8): visibile solo con body.perform-mode, riempita da performManager.js -->
           <div id="performPanel">
-            <div class="perform-section"><div class="perform-title">Variabili</div><div id="performVars" class="perform-vars"></div></div>
-            <div class="perform-section"><div class="perform-title">Canali → live</div><div id="performChannels" class="pad-grid"></div></div>
-            <div class="perform-section"><div class="perform-title">Preset</div><div id="performPresets" class="pad-grid"></div></div>
+            <div class="perform-section"><div class="perform-title"><i class="fa-solid fa-wave-square" aria-hidden="true"></i> Variables</div><div id="performVars" class="perform-vars"></div></div>
+            <div class="perform-section"><div class="perform-title"><i class="fa-solid fa-tower-broadcast" aria-hidden="true"></i> Channels → live</div><div id="performChannels" class="pad-grid"></div></div>
+            <div class="perform-section"><div class="perform-title"><i class="fa-solid fa-bookmark" aria-hidden="true"></i> Presets</div><div id="performPresets" class="pad-grid"></div></div>
           </div>
-<!-- 
-          <div class="multychannel" title="change the channel workplace" id="function">
-            <div class="row spacingRow">
-              <div style="text-align:center" class=" col-3">
-                <button style="width:90%" id="save" title="save the channel in the workplace"
-                  onclick="selectActionExec('save')" class="btn btn-primary">Save</button>
-              </div>
-              <div style="text-align:center" class=" col-6">
-                <button style="width:90%" id="saverun" title="save the channel in the workplace and then send to live"
-                  onclick="selectActionExec('saverun')" class="btn btn-primary">Save and Run</button>
-              </div>
-            </div>
-            <div class="row spacingRow">
-              <div style="text-align:center" class=" col-3">
-                <button style="width:90%" id="Autosave"
-                  title="active the autosave mode when you change channel in workplace" onclick="autosave()"
-                  class="btn btn-primary"> Autosave</button>
-              </div>
-              <div style="text-align:center" class=" col-3">
-                <button style="width:90%" id="api" title="show api of hydra" onclick="window.open(apiLink,'_blank')"
-                  class="btn btn-primary">Api</button>
-              </div>
-              <div style="text-align:center" class=" col-3">
-                <button style="width:90%" id="live" title="show live source"
-                  onclick="window.open('./live','winname','directories=no,titlebar=no,toolbar=no,location=no,status=no,menubar=no,scrollbars=no,resizable=no,width=400,height=350')"
-                  class="btn btn-primary"> Live</button>
-              </div>
-            </div>
-           <div class="row spacingRow">
-              <div style="text-align:left" class=" col-12">
-                F12 for log error in IRL for the code in your workplace
-              </div>
-            </div>
-          </div>
--->
         </div>
       </div>
-      <script id="script" type="text/javascript">
-      // Scarica db.json come file attachment tramite redirect HTTP
-      function exportDb() {
-          window.location.href = '/api/db/export';
-      }
-
-      // Carica un file JSON dal disco, lo valida e lo invia al server per sostituire il DB.
-      // Dopo import riuscito la pagina si ricarica per aggiornare i canali.
-      async function importDb(event) {
-          const file = event.target.files[0];
-          if (!file) return;
-          // Reset input per permettere ri-selezione dello stesso file in futuro
-          event.target.value = '';
-          const text = await file.text();
-          let data;
-          try { data = JSON.parse(text); } catch(e) { alert('File JSON non valido'); return; }
-          const res = await fetch('/api/db/import', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(data)
-          });
-          if (res.ok) {
-              location.reload();
-          } else {
-              const err = await res.json().catch(() => ({}));
-              alert('Errore import: ' + (err.error || res.status));
-          }
-      }
-      </script>
     </div>
 
     <div class="modal fade" id="modalPanelHere" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">

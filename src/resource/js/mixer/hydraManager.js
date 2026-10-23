@@ -46,6 +46,10 @@ function inithydra() {
     hydraMain.setResolution(1920, 1080);
     resetAudioAndSpeed();
     a.show();
+    // Hydra appende il visualizzatore FFT al body in basso a destra, sopra i tasti delle
+    // mappature: lo si sposta dentro il riquadro preview (posizione in basic.css, .tv > .audio-fft)
+    var tv = document.querySelector('.tv');
+    if (tv && a.canvas) { a.canvas.classList.add('audio-fft'); tv.appendChild(a.canvas); }
     window.hydraMain = hydraMain;
     window.resetAudioAndSpeed = resetAudioAndSpeed;
 }
@@ -54,7 +58,8 @@ window.addEventListener('error', function(event) {
     // Filtra solo errori provenienti da script Hydra (chalfunction)
     var errPanel = document.getElementById('hydraErrorPanel');
     if (!errPanel) return;
-    errPanel.textContent = '⚠ Hydra error: ' + (event.message || 'errore sconosciuto');
+    errPanel.innerHTML = '<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> ';
+    errPanel.appendChild(document.createTextNode('Hydra error: ' + (event.message || 'unknown error'))); // testo: sicuro vs XSS
     errPanel.style.display = 'block';
     // Auto-hide dopo 5 secondi
     setTimeout(function() { errPanel.style.display = 'none'; }, 5000);

@@ -24,6 +24,7 @@ export function showToast(message, type) {
         'z-index:99999',
         'display:flex',
         'align-items:center',
+        'gap:8px',
         'padding:10px 18px',
         'border-radius:6px',
         'color:#fff',
@@ -37,7 +38,10 @@ export function showToast(message, type) {
         'white-space:nowrap',
         'max-width:420px'
     ].join(';');
-    toast.textContent = message;
+    // UX_GUIDA RF-A1: l'icona dipende dal tipo, i messaggi non contengono simboli ✓ ⚠ ℹ
+    var ico = type === 'error' ? 'triangle-exclamation' : type === 'info' ? 'circle-info' : 'check';
+    toast.innerHTML = '<i class="fa-solid fa-' + ico + '" aria-hidden="true"></i>';
+    toast.appendChild(document.createTextNode(message)); // testo: sicuro vs XSS
 
     _toastOffset += 52; // stack verso l'alto se più toast aperti contemporaneamente
     document.body.appendChild(toast);

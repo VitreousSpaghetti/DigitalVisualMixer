@@ -13,7 +13,7 @@ import { getMappings, applyVarInput, stopRates, tickNow } from './macroVarManage
 import { executeActions } from './macroManager.js';
 import { initMIDI } from './midiManager.js';
 import { initGamepad, padCount } from './gamepadManager.js';
-import { sameSource, sourceId, sourceLabel } from './sourceUtil.js';
+import { sameSource, sourceId, sourceLabel, sourceIcon } from './sourceUtil.js';
 
 var _down = {};          // id sorgente → ultimo stato premuto, per calcolare i fronti
 var _learn = null;       // callback del Learn attivo
@@ -26,11 +26,11 @@ var _padN = 0;
  *   sorgente non mappata (scorciatoia verso "nuova mappatura")
  */
 export function initMappings(onUnmappedClick) {
-    initMIDI(_onInput, function(s) { _status('midiStatus', 'MIDI', s); });
+    initMIDI(_onInput, function(s) { _status('midiStatus', 'music', 'MIDI', s); });
     initGamepad(_onInput, function(s) {
         if (s.devices.length < _padN) stopRates(); // pad scollegato: congela, niente deriva
         _padN = s.devices.length;
-        _status('padStatus', '🎮', s);
+        _status('padStatus', 'gamepad', 'Gamepad', s);
     });
     // Capture: durante il Learn il tasto non deve arrivare a Bootstrap (Esc chiuderebbe la modal)
     window.addEventListener('keydown', _onKey, true);
@@ -68,6 +68,7 @@ function _onKey(e) {
         e.stopPropagation();
         if (e.key === 'Escape') { var cb = _learn; _learn = null; cb(null); return; }
     } else if (t && (t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable ||
+               (t.closest && t.closest('[role=menu], .cmd-palette')) || // menu contestuale / command palette aperti
                (t.tagName === 'INPUT' && !['range', 'checkbox', 'button'].includes(t.type)))) {
         return; // si sta scrivendo (editor CodeMirror è contenteditable): niente trigger
     }
@@ -114,19 +115,24 @@ function _monitor(ev, hits) {
     var val = s.type === 'cc' ? ev.raw
         : s.type === 'axis' || s.type === 'button' ? ev.v.toFixed(2)
         : ev.down ? 'on' + (s.type === 'note' ? ' ' + Math.round(ev.v * 127) : '') : 'off';
-    el.textContent = sourceLabel(s) + ' → ' + val + (hits ? '' : ' · non mappata, clic per mappare');
+    el.innerHTML = '<i class="fa-solid fa-' + sourceIcon(s) + '" aria-hidden="true"></i> ';
+    el.appendChild(document.createTextNode(sourceLabel(s) + ' → ' + val + (hits ? '' : ' · not mapped')));
     el.classList.toggle('mon-unmapped', !hits);
+    el.dataset.tip = hits ? 'Last input received from MIDI / gamepad / keyboard' : 'This control is not mapped — click to map it';
     _lastUnmapped = hits ? null : s;
 }
 
 /** Indicatore dispositivi in navbar: verde con dispositivi, rosso senza, bottone se negato */
-function _status(id, label, s) {
+function _status(id, ico, label, s) {
     var el = document.getElementById(id);
     if (!el) return;
     var n = s.devices.length;
     el.className = 'dev-status ' + (s.state !== 'on' ? 'dev-off' : n ? 'dev-on' : 'dev-none');
-    el.textContent = s.state === 'denied' ? label + ' ✕ Attiva' : s.state === 'unsupported' ? label + ' n/d' : label + ' ● ' + n;
-    el.title = s.state === 'unsupported' ? 'Non supportato da questo browser: usa Chrome o Edge'
-        : s.state === 'denied' ? 'Accesso MIDI negato: clic per riprovare'
-        : n ? s.devices.join('\n') : 'Nessun dispositivo collegato';
+    el.innerHTML = '<i class="fa-solid fa-' + ico + '" aria-hidden="true"></i> ' +
+        (s.state === 'denied' ? 'Enable' : s.state === 'unsupported' ? 'n/a' : n);
+    el.setAttribute('aria-label', label + ': ' + (s.state === 'on' ? n + ' connected' : s.state));
+    // RF-B4: tooltip dinamico (elenco dispositivi), letto da uiHelp.js all'apertura
+    el.dataset.tip = s.state === 'unsupported' ? label + ' not supported by this browser: use Chrome or Edge'
+        : s.state === 'denied' ? 'MIDI access denied: click to try again'
+        : n ? label + ':\n' + s.devices.join('\n') : 'No ' + label + ' connected' + (label === 'Gamepad' ? ' (press a button to wake it)' : '');
 }

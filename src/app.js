@@ -54,9 +54,13 @@ app.get("/dist/hydra-synth.js", (request, response) => {
 app.get("/dist/bootstrap.min.css", (request, response) => { 
     response.sendFile('bootstrap.min.css' , { root: './node_modules/bootstrap/dist/css/' }) 
 });  
-app.get("/dist/bootstrap.min.css.map", (request, response) => { 
-    response.sendFile('bootstrap.min.css.map' , { root: './node_modules/bootstrap/dist/css/' }) 
-});  
+app.get("/dist/bootstrap.min.css.map", (request, response) => {
+    response.sendFile('bootstrap.min.css.map' , { root: './node_modules/bootstrap/dist/css/' })
+});
+// UX_GUIDA RF-A5: icone Font Awesome servite in locale (il mixer si usa in live, anche senza rete).
+// css/ e webfonts/ affiancati: all.min.css carica i font con url(../webfonts/...)
+app.use('/dist/fontawesome/css', express.static('./node_modules/@fortawesome/fontawesome-free/css'));
+app.use('/dist/fontawesome/webfonts', express.static('./node_modules/@fortawesome/fontawesome-free/webfonts'));
  
 
 var filesJs = fs.readdirSync('./src/resource/addon/');
@@ -289,7 +293,7 @@ io.sockets.on('connection', async function(socket) {
 
         // Guard: rifiuta se è l'unico canale rimasto
         if (allChannels.length <= 1) {
-            socket.emit('delete_channel_error', 'Impossibile eliminare l\'unico canale');
+            socket.emit('delete_channel_error', 'Cannot delete the only channel');
             return;
         }
 

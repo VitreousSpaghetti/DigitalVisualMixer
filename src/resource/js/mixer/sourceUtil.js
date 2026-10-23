@@ -27,18 +27,27 @@ export function noteName(n) {
     return NOTES[n % 12] + (Math.floor(n / 12) - 1);
 }
 
-/** Etichetta leggibile, usata in Macro Manager, monitor input e vista Perform */
+/**
+ * Etichetta leggibile, usata in Macro Manager, monitor input e vista Perform.
+ * Solo testo (va anche in <option> e textContent): l'icona della famiglia la dà sourceIcon()
+ */
 export function sourceLabel(src) {
     if (!src) return '—';
     var ch = src.ch ? ' ch' + src.ch : '';
     switch (src.type) {
         case 'cc':     return 'CC' + src.n + ch;
-        case 'note':   return '♪' + noteName(src.n) + (src.nTo > src.n ? '–' + noteName(src.nTo) : '') + ch;
-        case 'axis':   return '🎮' + src.pad + ' asse ' + src.i;
-        case 'button': return '🎮' + src.pad + ' B' + src.i;
-        case 'key':    return '⌨ ' + (src.ctrl ? 'Ctrl+' : '') + (src.shift ? 'Shift+' : '') + (src.alt ? 'Alt+' : '') + src.key;
+        case 'note':   return 'Note ' + noteName(src.n) + (src.nTo > src.n ? '–' + noteName(src.nTo) : '') + ch;
+        case 'axis':   return 'Pad' + src.pad + ' axis ' + src.i;
+        case 'button': return 'Pad' + src.pad + ' B' + src.i;
+        case 'key':    return (src.ctrl ? 'Ctrl+' : '') + (src.shift ? 'Shift+' : '') + (src.alt ? 'Alt+' : '') + src.key;
     }
     return '?';
+}
+
+/** Icona Font Awesome della famiglia (UX_GUIDA RF-A3: stessa icona in monitor, Mappings e Perform) */
+export function sourceIcon(src) {
+    var f = sourceFamily(src);
+    return f === 'midi' ? 'music' : f === 'gamepad' ? 'gamepad' : f === 'key' ? 'keyboard' : '';
 }
 
 /** Famiglia per il filtro del Macro Manager */
