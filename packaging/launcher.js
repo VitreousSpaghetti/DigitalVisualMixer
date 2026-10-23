@@ -1,4 +1,4 @@
-/** LAUNCHER DELL'EXE (task 2026-08-11-standalone-exe-packaging, mandato 3/3)
+/** LAUNCHER DELL'EXE
  *
  * Unico posto dei comportamenti solo-exe: cartella dati accanto all'exe e apertura del browser.
  * Il server è src/app.js così com'è (nessuna copia): `npm start` resta identico.

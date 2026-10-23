@@ -1,45 +1,45 @@
-# Build exe Windows standalone
+# Standalone Windows exe build
 
-Cartella dedicata all'exe (task `.ai/task/2026-08-11-standalone-exe-packaging.md`).
-Il server è `../src` così com'è: qui ci sono solo launcher e config del packager.
+Folder dedicated to the exe. The server is `../src` as is: this folder only holds the launcher
+and the packager config.
 
 ## Build
 
-Prerequisiti (solo sulla macchina di build): Node 22+, `npm install` già fatto nella root
-e `npm run build` (rollup) se `rollupBundle/` non è aggiornato.
+Prerequisites (build machine only): Node 22+, `npm install` already run in the root
+and `npm run build` (rollup) if `rollupBundle/` is not up to date.
 
 ```
-npm run package:win          # dalla root, equivale a:
+npm run package:win          # from the root, same as:
 cd packaging && npm install && npm run build
 ```
 
-Output: `packaging/dist/DigitalVisualMixer.exe` (~100 MB, contiene Node 22).
-Il primo build scarica il binario Node in `%USERPROFILE%\.pkg-cache`.
+Output: `packaging/dist/DigitalVisualMixer.exe` (~100 MB, contains Node 22).
+The first build downloads the Node binary into `%USERPROFILE%\.pkg-cache`.
 
-## Come funziona
+## How it works
 
-- `launcher.js` (entry dell'exe): imposta `DATA_DIR` = `data\` accanto all'exe, controlla che la
-  porta sia libera, importa `../src/app.js`, apre il browser su `http://localhost:8080/`.
-- `@yao-pkg/pkg` in modalità **SEA** (`"sea": true`): necessaria perché `src/manager.js` usa
-  top-level await insieme a `export`, che la modalità standard di pkg (e un bundle esbuild CJS)
-  non sanno trasformare. Per lo stesso motivo esbuild non è usato.
-- `pkg.assets` elenca i file letti con `fs`/`sendFile` (html/css/js/img, `rollupBundle/`,
-  file serviti da `node_modules`, client Socket.IO, `../package.json` per `"type": "module"`).
-  `src/resource/db.json` e `https-cert.json` di sviluppo **non** sono inclusi.
-  Nuovo asset servito da `app.js` fuori da queste cartelle → aggiungerlo qui.
-- Gli avvisi `Cannot find module ...` durante la build riguardano JS del browser
-  (hydra-synth, addon CodeMirror) analizzati come se fossero di Node: innocui.
+- `launcher.js` (exe entry point): sets `DATA_DIR` = `data\` next to the exe, checks that the
+  port is free, imports `../src/app.js`, opens the browser on `http://localhost:8080/`.
+- `@yao-pkg/pkg` in **SEA** mode (`"sea": true`): needed because `src/manager.js` uses
+  top-level await together with `export`, which pkg's standard mode (and a CJS esbuild bundle)
+  cannot transform. For the same reason esbuild is not used.
+- `pkg.assets` lists the files read with `fs`/`sendFile` (html/css/js/img, `rollupBundle/`,
+  files served from `node_modules`, Socket.IO client, `../package.json` for `"type": "module"`).
+  The development `src/resource/db.json` and `https-cert.json` are **not** included.
+  A new asset served by `app.js` outside these folders → add it here.
+- The `Cannot find module ...` warnings during the build concern browser JS
+  (hydra-synth, CodeMirror addons) analysed as if it were Node code: harmless.
 
-## Uso dell'exe
+## Using the exe
 
-- Doppio clic: si apre una console con gli URL (mixer + live di rete) e il browser sul mixer.
-  Chiudere la console ferma il server.
-- Dati in `data\` accanto all'exe (`db.json`, `https-cert.json`): al primo avvio DB vuoto di default.
-  Per portare canali/mappature: Export DB da `npm start`, Import DB nell'exe.
-  Aggiornare l'exe = sostituire solo il file `.exe`, `data\` resta.
-- Variabili d'ambiente: `PORT` (8080), `HTTPS_PORT` (8443), `DATA_DIR`, `NO_BROWSER=1`.
-- Porta occupata (es. `npm start` già attivo): messaggio in console, l'exe non parte.
-- **SmartScreen**: l'exe non è firmato → "Windows ha protetto il PC": *Ulteriori informazioni →
-  Esegui comunque* (una volta).
-- **Firewall**: al primo avvio consentire `DigitalVisualMixer.exe` sulle **reti private**,
-  altrimenti la live da un altro PC non si collega.
+- Double-click: a console opens with the URLs (mixer + network live) and the browser on the mixer.
+  Closing the console stops the server.
+- Data in `data\` next to the exe (`db.json`, `https-cert.json`): default empty DB on first run.
+  To bring channels/mappings over: Export DB from `npm start`, Import DB in the exe.
+  Updating the exe = replace only the `.exe` file, `data\` stays.
+- Environment variables: `PORT` (8080), `HTTPS_PORT` (8443), `DATA_DIR`, `NO_BROWSER=1`.
+- Port in use (e.g. `npm start` already running): message in the console, the exe does not start.
+- **SmartScreen**: the exe is not signed → "Windows protected your PC": *More info →
+  Run anyway* (once).
+- **Firewall**: on first run allow `DigitalVisualMixer.exe` on **private networks**,
+  otherwise the live window from another PC cannot connect.

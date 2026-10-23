@@ -1,97 +1,155 @@
 # Digital Visual Mixer — Vitreous
 
-Web mixer live per performance visive basato su [Hydra-synth](https://hydra.ojack.xyz/).  
-Autore: [Emiliano Brazzoli @vitreous_spaghetti](https://www.instagram.com/vitreous_spaghetti/)
+Live mixer for [Hydra](https://hydra.ojack.xyz/) visuals. Write and preview Hydra code in the
+**mixer** window, then send it to the **live** window on the projector — on the same PC or on
+another PC in the network.
+
+Author: [Emiliano Brazzoli @vitreous_spaghetti](https://www.instagram.com/vitreous_spaghetti/)
 
 ---
 
-## Stack
+## Download
 
-| Layer | Tecnologia |
-|-------|-----------|
-| Server | Node.js + Express.js (ESM, porta 8080) |
-| Realtime | Socket.IO v4.7.2 |
-| Editor | CodeMirror 6 (bundled con Rollup) |
-| Visual engine | hydra-synth v1.3.22 (8 sorgenti, 8 output, 1920×1080) |
-| UI | Bootstrap 5.0.2 |
-| DB | db.json via VitreousDataBase |
+**[Download the latest version (DigitalVisualMixer.exe)](https://github.com/VitreousSpaghetti/DigitalVisualMixer/releases/latest/download/DigitalVisualMixer.exe)**
+· [all releases](https://github.com/VitreousSpaghetti/DigitalVisualMixer/releases)
 
-## Avvio
+Requirements: Windows 10/11 64-bit, a modern browser (Chrome or Edge recommended, needed for MIDI),
+a GPU with WebGL. Nothing to install: double-click the exe, a console shows the URLs and the
+browser opens on the mixer. Closing the console stops the app.
+
+First run:
+
+- **SmartScreen**: the exe is not signed → *More info → Run anyway* (once).
+- **Firewall**: allow `DigitalVisualMixer.exe` on **private networks**, otherwise a live window on
+  another PC cannot connect.
+- Your data (channels, mappings, presets) lives in the `data\` folder next to the exe.
+- **Update** = replace only the `.exe`; `data\` stays.
+- **Move data** to another PC or version: *Export DB* from the menu, then *Import DB* on the other side.
+
+## Quick start
+
+1. Write Hydra code in the editor, e.g. `osc(10, 0.1).out()`.
+2. **Preview** (`Ctrl+Enter`): runs only in the local preview, the audience sees nothing.
+3. **Save** (`Ctrl+↑`) stores the code in the channel.
+4. Open the **Live** window (`/live`) on the projector and **Send to live** (`Ctrl+↓`).
+5. Press `F1` for the built-in Guide.
+
+## Features
+
+- Channels with thumbnails, search and drag & drop reordering.
+- Transitions between channels on the live output.
+- Macro variables: `{{key}}` in the code becomes a live value, changed without re-running the code.
+- **Mappings**: drive variables, channels and presets from MIDI, gamepad or keyboard, with modes
+  *absolute*, *increment*, *gate*, *impulse* and *toggle*.
+- Presets: a channel with its variable values and transition, recalled in one click.
+- **Perform** view (`F2`): big preview, variables as bars, channel and preset pads.
+- Right-click menu in the editor: cut/copy/paste, insert Hydra functions and macro variables.
+- Command palette (`Ctrl+K`) to search any action.
+- Built-in Guide (`F1`).
+
+## Live on another PC
+
+At startup the console prints the network URL of the live window, for example:
+
+```
+Live (network): https://192.168.1.20:8443/live?fit=cover
+```
+
+Open it from the other PC (same network). The certificate is self-signed: the browser warns once,
+accept it to continue. HTTPS is what lets the live window use the **microphone** and **webcam**
+(audio-reactive visuals, camera sources). The URL is also shown in the Guide.
+If the other PC cannot connect, check that the firewall allows the app on private networks.
+
+## Keyboard shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+Enter` | Preview the code locally (not live) |
+| `Ctrl+↑` | Save the channel being edited |
+| `Ctrl+↓` | Send the channel being edited to live (without saving) |
+| `Ctrl+←` | Send the previous channel to live |
+| `Ctrl+→` | Send the next channel to live |
+| `F2` | Switch between Edit and Perform view |
+| `F1` | Open the Guide |
+| `Ctrl+K` | Command palette: search any action |
+| `Shift+F10` | Editor context menu at the cursor (also right-click or Menu key) |
+
+## Development
+
+Requires Node.js (22+ to build the exe).
 
 ```bash
-git clone --recurse-submodules https://github.com/emilianobrazzoli/DigitalVisualMixer.git
+git clone https://github.com/VitreousSpaghetti/DigitalVisualMixer.git
+cd DigitalVisualMixer
 npm install
-npm run build   # bundle CodeMirror con Rollup
-npm start       # avvia su localhost:8080
+npm run build   # CodeMirror bundle (Rollup)
+npm start       # http://localhost:8080/
 ```
 
-## Route
+Build the Windows exe: `npm run package:win` → `packaging/dist/DigitalVisualMixer.exe`.
+Details in [packaging/README.md](packaging/README.md).
 
-| URL | Descrizione |
+### Configuration
+
+Environment variables (also from a `.env` file in the project root, except `DATA_DIR`):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `8080` | HTTP port (mixer and local live) |
+| `HTTPS_PORT` | `8443` | HTTPS port (live on another PC) |
+| `DATA_DIR` | `src/resource` (exe: `data\` next to the exe) | Folder of `db.json` and the HTTPS certificate |
+| `MAX_CHANNELS` | `36` | Informational only: the channels are the ones in the DB |
+| `NO_BROWSER` | unset | Exe only: `1` = do not open the browser at startup |
+
+### Routes
+
+| URL | Description |
 |-----|-------------|
-| `http://localhost:8080/` | Pannello mixer |
-| `http://localhost:8080/live` | Output proiettore (fullscreen) |
-| `http://localhost:8080/live?fit=cover` | Output senza bande nere |
-| `http://localhost:8080/about` | Info + shortcut |
+| `http://localhost:8080/` | Mixer |
+| `http://localhost:8080/live` | Live output (fullscreen) |
+| `http://localhost:8080/live?fit=cover` | Live output without black bars |
+| `https://<IP>:8443/live?fit=cover` | Live output from another PC |
+| `http://localhost:8080/about` | About |
+| `GET /api/lan` | Network URLs of the live window |
+| `GET /api/db/export` | Download `db.json` |
+| `POST /api/db/import` | Replace the DB with a `db.json` |
 
-## Shortcut da tastiera
-
-| Shortcut | Azione |
-|----------|--------|
-| `Ctrl + Enter` | Preview locale (non in live) |
-| `Ctrl + ↑` | Salva il canale corrente |
-| `Ctrl + ↓` | Salva e manda in live |
-| `Ctrl + ←` | Canale live precedente |
-| `Ctrl + →` | Canale live successivo |
-
-## Architettura
+### Architecture
 
 ```
-Browser (Mixer :8080/)          Browser (/live)
-  CodeMirror editor           Hydra canvas fullscreen
-  Channel grid                    |
-        |                         |
-        └──── Socket.IO ──────────┘
-                  |
-            Node.js + Express :8080
-            src/app.js
-                  |
-            src/manager.js
-            src/resource/db.json (VitreousDataBase)
+Browser: Mixer (http :8080/)        Browser: Live (http :8080/live
+  editor, channels, mappings                  or https :8443/live from another PC)
+        |                                        |
+        └──────────── Socket.IO ─────────────────┘
+                          |
+        Node.js + Express — src/app.js
+        HTTP and HTTPS servers, one shared Socket.IO instance
+                          |
+        src/manager.js → <DATA_DIR>/db.json, https-cert.json
 ```
 
-## Configurazione
-
-Variabili d'ambiente (`.env`):
-
-| Variabile | Default | Descrizione |
-|-----------|---------|-------------|
-| `PORT` | `8080` | Porta server |
-| `MAX_CHANNELS` | `36` | Canali massimi (documentativo) |
-
-## Struttura file principali
+Main folders:
 
 ```
-src/app.js                      — Server Express + Socket.IO handlers
-src/manager.js                  — CRUD su db.json
-src/resource/html/mixer.html    — Interfaccia mixer
-src/resource/html/live.html     — Output live
-src/resource/html/about.html    — Info
-src/resource/css/basic.css      — Stili globali
-src/resource/js/mixer/
-  deckManager.js                — Entry point client
-  mixerManager.js               — Stato canali, save/run/load
-  mixerEmitter.js               — Bridge Socket.IO
-  hydraManager.js               — Init Hydra, esecuzione codice, error handling
-  toastManager.js               — Notifiche toast
-  menuFunctionManager.js        — Menu funzioni Hydra
-  codeMirrorManager.js          — CodeMirror 6
-  macroManager.js               — Shortcut tastiera
+src/                 server (app.js, manager.js, cert.js)
+src/resource/html/   mixer, live, about pages
+src/resource/css/    styles
+src/resource/js/     browser code (mixer/ = mixer modules)
+packaging/           Windows exe build
+test/                checks and demo data
 ```
 
-## Risorse Hydra
+### Release
 
-- [Documentazione](https://hydra.ojack.xyz/docs/#/)
-- [API Reference](https://hydra.ojack.xyz/api/)
+1. `npm run package:win`.
+2. Tag the version, e.g. `git tag v1.1.0 && git push origin v1.1.0`.
+3. Create a GitHub release from the tag and attach `packaging/dist/DigitalVisualMixer.exe`
+   **with exactly that file name**: the download link above
+   (`releases/latest/download/DigitalVisualMixer.exe`) relies on it.
 
-![@vitreous_spaghetti](/src/resource/img/alpha.png?raw=true)
+## Hydra resources
+
+- [Documentation](https://hydra.ojack.xyz/docs/#/)
+- [API reference](https://hydra.ojack.xyz/api/)
+
+![@vitreous_spaghetti](src/resource/img/alpha.png?raw=true)
