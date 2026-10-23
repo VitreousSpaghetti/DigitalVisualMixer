@@ -204,9 +204,11 @@ io.sockets.on('connection', async function(socket) {
 
     //getChannel setted live — searchChannel ora restituisce null se il canale non esiste
     var currentChannel = await searchChannel(channelShow);
-    if (currentChannel) io.sockets.emit("get_channel", currentChannel);
+    // Stato iniziale solo al client che si connette: inviato a tutti, la connessione del mixer
+    // ricaricava il canale sulla Live e le passava toload=false, facendo perdere il primo invio.
+    if (currentChannel) socket.emit("get_channel", currentChannel);
 
-    io.sockets.emit("get_toload", toload);
+    socket.emit("get_toload", toload);
 
     //set the channel in charge
     socket.on('set_channel', async function(variable) {

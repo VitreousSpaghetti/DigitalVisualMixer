@@ -1,11 +1,12 @@
 {
     "name": "dvm-packaging",
     "private": true,
-    "description": "Build dell'exe Windows standalone. Sorgente: ../src (nessuna copia). Vedi README.md",
+    "description": "Build dell'exe Windows e del binario macOS standalone (build:mac solo su un Mac: arch = quella della macchina, firma ad-hoc). Sorgente: ../src (nessuna copia). Vedi README.md",
     "type": "module",
     "bin": "launcher.js",
     "scripts": {
-        "build": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && pkg . --targets node22-win-x64 --output dist/DigitalVisualMixer.exe"
+        "build": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && pkg . --targets node22-win-x64 --output dist/DigitalVisualMixer.exe",
+        "build:mac": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && pkg . --targets node22-macos --output dist/DigitalVisualMixer && codesign --force --sign - dist/DigitalVisualMixer && codesign --verify dist/DigitalVisualMixer"
     },
     "pkg": {
         "sea": true,

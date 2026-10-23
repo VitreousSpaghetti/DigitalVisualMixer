@@ -1,0 +1,85 @@
+# Builds the standalone binaries and attaches them to the GitHub release.
+# Trigger = release published (not tag push): the release already exists, so the job only has to
+# attach files to it, and drafting the notes stays a manual step. workflow_dispatch = test run
+# without a release (binaries kept as workflow artifacts).
+name: Release binaries
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write # gh release upload
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            script: build
+            asset: DigitalVisualMixer.exe
+          # One native runner per architecture: pkg builds for the host arch, and the smoke test
+          # must run the real binary (no cross-build, no Rosetta assumptions).
+          - os: macos-15
+            script: build:mac
+            asset: DigitalVisualMixer-macos-arm64.zip
+          - os: macos-15-intel
+            script: build:mac
+            asset: DigitalVisualMixer-macos-x64.zip
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # From scratch: rollupBundle/ is regenerated here, not taken from a developer machine
+      - run: npm ci
+      - run: npm run build
+      - run: npm ci --prefix packaging
+      - run: npm run ${{ matrix.script }} --prefix packaging
+
+      # zip keeps the Unix execute bit (a lost bit = "permission denied" on double-click)
+      - name: Zip (macOS)
+        if: runner.os == 'macOS'
+        working-directory: packaging/dist
+        run: zip ${{ matrix.asset }} DigitalVisualMixer
+
+      # Smoke test on what users download: the exe, or the binary extracted from the zip
+      - name: Smoke test
+        run: |
+          mkdir smoke && cd smoke
+          if [ "$RUNNER_OS" = macOS ]; then
+            unzip ../packaging/dist/${{ matrix.asset }}
+            bin=./DigitalVisualMixer
+          else
+            bin=../packaging/dist/DigitalVisualMixer.exe
+          fi
+          # Default DATA_DIR on purpose: on macOS this exercises ~/Library/Application Support
+          NO_BROWSER=1 "$bin" > out.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS -o /dev/null http://localhost:8080/; then
+              echo "HTTP OK after ${i}s"; cat out.log; kill $! || true; exit 0
+            fi
+            sleep 1
+          done
+          echo "Binary did not answer on http://localhost:8080/ within 60s"; cat out.log; exit 1
+
+      - name: Attach to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # --clobber: a release re-published with the same tag replaces the files, no duplicates
+        run: gh release upload "${{ github.event.release.tag_name }}" packaging/dist/${{ matrix.asset }} --clobber
+
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          name: ${{ matrix.asset }}
+          path: packaging/dist/${{ matrix.asset }}

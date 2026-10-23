@@ -10,21 +10,51 @@ Author: [Emiliano Brazzoli @vitreous_spaghetti](https://www.instagram.com/vitreo
 
 ## Download
 
-**[Download the latest version (DigitalVisualMixer.exe)](https://github.com/VitreousSpaghetti/DigitalVisualMixer/releases/latest/download/DigitalVisualMixer.exe)**
-· [all releases](https://github.com/VitreousSpaghetti/DigitalVisualMixer/releases)
+| System | File |
+|--------|------|
+| Windows 10/11 64-bit | **[DigitalVisualMixer.exe](https://github.com/VitreousSpaghetti/DigitalVisualMixer/releases/latest/download/DigitalVisualMixer.exe)** |
+| macOS, Apple Silicon (M1, M2, …) | **[DigitalVisualMixer-macos-arm64.zip](https://github.com/VitreousSpaghetti/DigitalVisualMixer/releases/latest/download/DigitalVisualMixer-macos-arm64.zip)** |
+| macOS, Intel | **[DigitalVisualMixer-macos-x64.zip](https://github.com/VitreousSpaghetti/DigitalVisualMixer/releases/latest/download/DigitalVisualMixer-macos-x64.zip)** |
 
-Requirements: Windows 10/11 64-bit, a modern browser (Chrome or Edge recommended, needed for MIDI),
-a GPU with WebGL. Nothing to install: double-click the exe, a console shows the URLs and the
-browser opens on the mixer. Closing the console stops the app.
+[All releases](https://github.com/VitreousSpaghetti/DigitalVisualMixer/releases)
 
-First run:
+Requirements: a modern browser (Chrome or Edge recommended, needed for MIDI), a GPU with WebGL.
+Nothing to install: start the app, a console shows the URLs and the browser opens on the mixer.
+Closing the console stops the app.
 
+**Move data** to another PC or version: *Export DB* from the menu, then *Import DB* on the other side.
+
+### Windows
+
+- Double-click `DigitalVisualMixer.exe`.
 - **SmartScreen**: the exe is not signed → *More info → Run anyway* (once).
 - **Firewall**: allow `DigitalVisualMixer.exe` on **private networks**, otherwise a live window on
   another PC cannot connect.
 - Your data (channels, mappings, presets) lives in the `data\` folder next to the exe.
 - **Update** = replace only the `.exe`; `data\` stays.
-- **Move data** to another PC or version: *Export DB* from the menu, then *Import DB* on the other side.
+
+### macOS
+
+Requires macOS 11 (Big Sur) or later and **Google Chrome** for MIDI (Safari has no MIDI support).
+
+Which file? Apple menu → *About This Mac*: **Chip** "Apple M…" → `macos-arm64`;
+**Processor** "Intel…" → `macos-x64`. (The Intel file also runs on Apple Silicon, slower; the
+Apple Silicon file does not run on Intel Macs.)
+
+First run:
+
+1. Extract the zip and double-click `DigitalVisualMixer`: a Terminal window opens with the URLs.
+2. The app is not signed by Apple, so macOS blocks it the first time. Open
+   *System Settings → Privacy & Security*, scroll down and click **Open Anyway** next to
+   "DigitalVisualMixer", then confirm. (macOS 14 and earlier: right-click the file → *Open* → *Open*.)
+3. When asked, **allow incoming connections**, otherwise a live window on another PC cannot connect.
+4. Microphone and camera permissions are asked by the browser when a visual uses them.
+
+- Chrome opens on the mixer; without Chrome the default browser opens and the Terminal shows a
+  reminder that MIDI needs Chrome or Edge.
+- Your data lives in `~/Library/Application Support/DigitalVisualMixer` (Finder: *Go → Go to
+  Folder…*), so it survives updates and moving the app.
+- **Update** = replace only the `DigitalVisualMixer` file.
 
 ## Quick start
 
@@ -87,6 +117,7 @@ npm start       # http://localhost:8080/
 ```
 
 Build the Windows exe: `npm run package:win` → `packaging/dist/DigitalVisualMixer.exe`.
+The macOS binaries are built on a Mac (or by the release workflow).
 Details in [packaging/README.md](packaging/README.md).
 
 ### Configuration
@@ -97,9 +128,9 @@ Environment variables (also from a `.env` file in the project root, except `DATA
 |----------|---------|-------------|
 | `PORT` | `8080` | HTTP port (mixer and local live) |
 | `HTTPS_PORT` | `8443` | HTTPS port (live on another PC) |
-| `DATA_DIR` | `src/resource` (exe: `data\` next to the exe) | Folder of `db.json` and the HTTPS certificate |
+| `DATA_DIR` | `src/resource` (exe: `data\` next to the exe; macOS app: `~/Library/Application Support/DigitalVisualMixer`) | Folder of `db.json` and the HTTPS certificate |
 | `MAX_CHANNELS` | `36` | Informational only: the channels are the ones in the DB |
-| `NO_BROWSER` | unset | Exe only: `1` = do not open the browser at startup |
+| `NO_BROWSER` | unset | Exe / macOS app only: `1` = do not open the browser at startup |
 
 ### Routes
 
@@ -135,17 +166,24 @@ src/                 server (app.js, manager.js, cert.js)
 src/resource/html/   mixer, live, about pages
 src/resource/css/    styles
 src/resource/js/     browser code (mixer/ = mixer modules)
-packaging/           Windows exe build
+packaging/           Windows exe and macOS builds
+.github/workflows/   release build
 test/                checks and demo data
 ```
 
 ### Release
 
-1. `npm run package:win`.
-2. Tag the version, e.g. `git tag v1.1.0 && git push origin v1.1.0`.
-3. Create a GitHub release from the tag and attach `packaging/dist/DigitalVisualMixer.exe`
-   **with exactly that file name**: the download link above
-   (`releases/latest/download/DigitalVisualMixer.exe`) relies on it.
+1. Tag the version, e.g. `git tag v1.1.0 && git push origin v1.1.0`.
+2. Create (publish) a GitHub release from the tag.
+3. Publishing starts the [release workflow](.github/workflows/release.yml): it builds
+   `DigitalVisualMixer.exe`, `DigitalVisualMixer-macos-arm64.zip` and
+   `DigitalVisualMixer-macos-x64.zip` from a clean checkout, starts each one to check that it
+   answers over HTTP, and attaches them to the release (a failed check = nothing attached).
+   The download links above (`releases/latest/download/...`) rely on these exact file names.
+   Re-running it on the same release replaces the files.
+
+The workflow can also be started by hand (*Actions → Release binaries → Run workflow*): the
+binaries are then kept as workflow artifacts instead of being attached to a release.
 
 ## Hydra resources
 

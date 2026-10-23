@@ -32,6 +32,9 @@ var modalEditor = "";
 var view = new EditorView({
   doc: "console.log('hello')\n",
   extensions: [
+    // Ctrl+Enter = Preview, gestita al keyup da initMacro: qui si consuma solo il keydown,
+    // altrimenti il default di basicSetup (insertBlankLine) aggiunge una riga. Prima di basicSetup per la precedenza.
+    keymap.of([{ key: "Ctrl-Enter", run: () => true }]),
     basicSetup,
     keymap.of([indentWithTab]),
     javascript(),
