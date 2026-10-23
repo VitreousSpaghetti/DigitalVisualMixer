@@ -18,9 +18,10 @@ assert.equal(p('osc([{{freq}}, 2])').code, 'osc([M.freq, 2])');
 assert.equal(p('b = {{x}};').code, 'b = M.x;');
 // Già dentro una funzione: diventa live da solo
 assert.equal(p('osc(()=>{{freq}}*2)').code, 'osc(()=>M.freq*2)');
-// Variabile non definita → placeholder invariato + missing
+// Variabile non definita → vale 0, il codice resta valido + missing
 r = p('osc({{nope}})');
-assert.equal(r.code, 'osc({{nope}})');
+assert.equal(r.code, 'osc(()=>M.nope)');
+assert.equal(window.M.nope, 0);
 assert.deepEqual(r.missing, ['nope']);
 // Il codice prodotto valuta davvero il valore corrente a ogni chiamata
 const fn = new Function('M', 'return ' + p('[{{freq}}]').code.replace(/^\[|\]$/g, '') )(window.M);

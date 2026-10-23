@@ -16,7 +16,7 @@ window.M = window.M || {};
  *  - dentro un'espressione/array/assegnazione (`{{f}}*2`, `[{{a}}]`, `b={{x}}`) → `M.f`:
  *    stesso valore di prima all'esecuzione, ed è live se l'espressione viene rivalutata
  *    (es. dentro update o ()=>). Segnalato in `warnings` perché altrimenti resta fisso.
- *  - key assente da M → placeholder invariato (errore di sintassi visibile) e segnalato in `missing`
+ *  - key assente da M → M[key] = 0 (il canale gira comunque) e segnalato in `missing`
  * ponytail: profondità [] contata a testo (anche dentro commenti/stringhe); basta per il codice Hydra tipico.
  * @param {string} jsx
  * @returns {{code: string, warnings: string[], missing: string[]}}
@@ -25,7 +25,9 @@ window.processMacroVars = function(jsx) {
     var warnings = [], missing = [];
     if (!jsx) return { code: jsx, warnings: warnings, missing: missing };
     var code = jsx.replace(/\{\{(\w+)\}\}/g, function(match, key, offset, src) {
-        if (!(key in window.M)) { missing.push(key); return match; }
+        // Key ignota → vale 0: lasciare {{key}} rompeva la sintassi dell'intero canale (anche in /live).
+        // Se la variabile viene creata dopo, M[key] viene sovrascritto e il canale la segue live.
+        if (!(key in window.M)) { missing.push(key); window.M[key] = 0; }
         var ref = /^[A-Za-z_$][\w$]*$/.test(key) ? 'M.' + key : 'M["' + key + '"]';
         var before = src.slice(0, offset);
         var prev = before.replace(/\s+$/, '').slice(-1);
