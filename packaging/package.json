@@ -1,0 +1,36 @@
+{
+    "name": "dvm-packaging",
+    "private": true,
+    "description": "Build dell'exe Windows standalone. Sorgente: ../src (nessuna copia). Vedi README.md",
+    "type": "module",
+    "bin": "launcher.js",
+    "scripts": {
+        "build": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && pkg . --targets node22-win-x64 --output dist/DigitalVisualMixer.exe"
+    },
+    "pkg": {
+        "sea": true,
+        "assets": [
+            "../package.json",
+            "../src/resource/addon/**/*",
+            "../src/resource/css/**/*",
+            "../src/resource/html/**/*",
+            "../src/resource/img/**/*",
+            "../src/resource/js/**/*",
+            "../src/resource/favicon.ico",
+            "../rollupBundle/**/*",
+            "../node_modules/hydra-synth/dist/hydra-synth.js",
+            "../node_modules/codemirror/dist/index.js",
+            "../node_modules/bootstrap/dist/css/bootstrap.min.css",
+            "../node_modules/bootstrap/dist/css/bootstrap.min.css.map",
+            "../node_modules/@fortawesome/fontawesome-free/css/**/*",
+            "../node_modules/@fortawesome/fontawesome-free/webfonts/**/*",
+            "../node_modules/socket.io/client-dist/**/*"
+        ]
+    },
+    "devDependencies": {
+        "@yao-pkg/pkg": "6.23.0"
+    },
+    "dependencies": {
+        "LiveSetupVitreousGetCoded": "file:.."
+    }
+}

@@ -74,6 +74,14 @@ function _sections() {
         ['concepts-perform', 'Perform view', 'circle-play',
             '<p>' + _kbd(SHORTCUTS.perform.keys) + ' switches to Perform: big preview, variables as vertical bars, channel pads (click = live) and preset pads. ' +
             'Nothing destructive is reachable from there and tooltips are off.</p>'],
+        // R-LAN1: URL letti da /api/lan dopo l'apertura (dipendono dalla rete del PC che fa da server)
+        ['live-lan', 'Live on another PC', 'display',
+            '<p>Open the live output on a second PC on the same network (e.g. the one connected to the projector):</p>' +
+            '<ol><li>On the other PC open: <ul id="guideLanUrls"><li>…</li></ul></li>' +
+            '<li>The browser warns that the connection is not private (self-signed certificate): choose <b>Advanced → Proceed</b>. Once per PC.</li>' +
+            '<li>Allow <b>microphone</b> and <b>camera</b> when asked: <code>a.fft</code> and <code>s0.initCam()</code> use the devices of that PC.</li>' +
+            '<li>If the page does not load, allow the app (Node.js) in the <b>Windows firewall</b> on private networks, on the PC running the server.</li></ol>' +
+            '<p>The same URLs are printed in the server console at startup.</p>'],
         ['shortcuts', 'Shortcuts', 'keyboard',
             '<table class="guide-table">' + Object.keys(SHORTCUTS).map(function(k) {
                 return '<tr><td>' + _kbd(SHORTCUTS[k].keys) + '</td><td>' + SHORTCUTS[k].label + '</td></tr>';
@@ -125,6 +133,11 @@ export function openGuide(sectionId) {
             '<p id="guideEmpty" class="mm-empty" style="display:none">Nothing found.</p>' +
         '</div></div></div></div></div>');
     _modal = document.getElementById('guideModal');
+    fetch('/api/lan').then(function(r) { return r.json(); }).then(function(d) {
+        var ul = document.getElementById('guideLanUrls');
+        if (ul) ul.innerHTML = d.live.length ? d.live.map(function(u) { return '<li><code>' + _esc(u) + '</code></li>'; }).join('')
+                                             : '<li>No network found: connect this PC to the LAN and restart the server.</li>';
+    }).catch(function() {});
 
     _modal.addEventListener('click', function(e) {
         var a = e.target.closest('[data-goto]');

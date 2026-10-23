@@ -7,12 +7,24 @@
  *  - recordManager.update() e tutti i metodi accettano options opzionale (backwards compatible)
  */
 import { createRequire } from 'module';
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 const require = createRequire(import.meta.url);
 const { Database } = require('vitreousdatabase');
 
-const DB_PATH = './src/resource/db.json';
+// Cartella dati scrivibile: DATA_DIR (env di processo, es. impostata da un launcher esterno)
+// oppure src/resource accanto a questo file, così `npm start` usa il db.json di sempre.
+// Risolta da import.meta.url e non dalla CWD: il server deve partire da qualsiasi cartella.
+// Nota: letta all'import del modulo, prima del dotenv.config() di app.js → un DATA_DIR nel .env non vale.
+export const DATA_DIR = process.env.DATA_DIR
+    ? path.resolve(process.env.DATA_DIR)
+    : path.join(path.dirname(fileURLToPath(import.meta.url)), 'resource');
+// VitreousDataBase crea il file mancante ma esige la cartella esistente
+mkdirSync(DATA_DIR, { recursive: true });
+// Esportato: unico percorso del DB anche per export/import in app.js
+export const DB_PATH = path.join(DATA_DIR, 'db.json');
 const ENTITY_CHANNEL    = 'channel';
 const ENTITY_TRANSITION = 'transition'; // entità globale: unico record id=0
 const ENTITY_MACRO      = 'macro';      // variabili e azioni macro live

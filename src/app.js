@@ -5,19 +5,12 @@ import fs from 'fs';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { searchChannel, saveChannel, getAll, getTransition, setTransition, reorderChannels, reloadDb, createChannel, deleteChannel, getAllMacros, saveMacro, createMacro, deleteMacro, getPresets, createPreset, deletePreset, updatePreset }  from './manager.js'
+// DB_PATH da manager.js: export/import devono operare sullo stesso file del DB (anche con DATA_DIR)
+import { DATA_DIR, DB_PATH, searchChannel, saveChannel, getAll, getTransition, setTransition, reorderChannels, reloadDb, createChannel, deleteChannel, getAllMacros, saveMacro, createMacro, deleteMacro, getPresets, createPreset, deletePreset, updatePreset }  from './manager.js'
 import { createServer } from "http";
+import { createServer as createHttpsServer } from "https";
 import { Server } from "socket.io";
-import { nodeResolve } from '@rollup/plugin-node-resolve';
-
-export default {
-    input: 'src/index.js',
-    output: {
-      dir: 'output',
-      format: 'cjs'
-    },
-    plugins: [nodeResolve()]
-  };
+import { lanIPv4, loadOrCreateCert } from './cert.js';
 
 //INIT ENV VAR
 const app = express();
@@ -26,116 +19,131 @@ const app = express();
 // DEVE stare prima di tutte le route
 app.use(express.json({ limit: '50mb' }));
 
-// Percorso del database — usato da export/import
-const DB_PATH = './src/resource/db.json';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Tutti gli asset sono risolti dalla root dell'app (cartella sopra src/), non dalla CWD:
+// così il server parte anche se lanciato da un'altra cartella o da un launcher esterno.
+const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
+const p = (rel) => path.join(ROOT, rel);
 const http = createServer(app);
 const io = new Server(http);
 if(!process || !process.env || !process.env.TOKEN){
     dotenv.config();
 }
 var port = process.env.PORT || 8080;
+var httpsPort = process.env.HTTPS_PORT || 8443;
+// R-LAN4: la stessa app e la STESSA istanza io anche in HTTPS, così mixer (http) e live remota
+// (https) ricevono gli stessi broadcast. Certificato illeggibile → solo HTTP (live remota senza mic/cam).
+var https = null;
+try {
+    https = createHttpsServer(loadOrCreateCert(DATA_DIR), app);
+    io.attach(https);
+} catch (e) {
+    console.warn('WARNING: HTTPS disabled (' + e.message + '). Remote live works over http, without microphone/webcam.');
+}
 // TODO-7.3: numero massimo di canali configurabile via env var MAX_CHANNELS
 // Il numero effettivo di canali è determinato da db.json (getAll).
 // Questo valore è documentativo — i canali sono aggiunti/rimossi direttamente da db.json o via API del server.
 var maxChannels = parseInt(process.env.MAX_CHANNELS, 10) || 36;
 var token = process.env.TOKEN || '';
-app.use(express.static(__dirname + '/dist/'));
 
 //LOAD MODULE   
 app.get("/src/resource/js/lib/codemirror.js", (request, response) => { 
-    response.sendFile('index.js' , { root: './node_modules/codemirror/dist/' }) 
+    response.sendFile('index.js' , { root: p('node_modules/codemirror/dist/') }) 
 });   
 app.get("/dist/hydra-synth.js", (request, response) => { 
-    response.sendFile('hydra-synth.js' , { root: './node_modules/hydra-synth/dist/' }) 
+    response.sendFile('hydra-synth.js' , { root: p('node_modules/hydra-synth/dist/') }) 
 });  
 app.get("/dist/bootstrap.min.css", (request, response) => { 
-    response.sendFile('bootstrap.min.css' , { root: './node_modules/bootstrap/dist/css/' }) 
+    response.sendFile('bootstrap.min.css' , { root: p('node_modules/bootstrap/dist/css/') }) 
 });  
 app.get("/dist/bootstrap.min.css.map", (request, response) => {
-    response.sendFile('bootstrap.min.css.map' , { root: './node_modules/bootstrap/dist/css/' })
+    response.sendFile('bootstrap.min.css.map' , { root: p('node_modules/bootstrap/dist/css/') })
 });
 // UX_GUIDA RF-A5: icone Font Awesome servite in locale (il mixer si usa in live, anche senza rete).
 // css/ e webfonts/ affiancati: all.min.css carica i font con url(../webfonts/...)
-app.use('/dist/fontawesome/css', express.static('./node_modules/@fortawesome/fontawesome-free/css'));
-app.use('/dist/fontawesome/webfonts', express.static('./node_modules/@fortawesome/fontawesome-free/webfonts'));
+app.use('/dist/fontawesome/css', express.static(p('node_modules/@fortawesome/fontawesome-free/css')));
+app.use('/dist/fontawesome/webfonts', express.static(p('node_modules/@fortawesome/fontawesome-free/webfonts')));
  
 
-var filesJs = fs.readdirSync('./src/resource/addon/');
+var filesJs = fs.readdirSync(p('src/resource/addon/'));
 filesJs.forEach(file => {  
     console.log("/src/resource/addon/"+file);
     app.get("/src/resource/addon/"+file, (request, response) => { 
-        response.sendFile(file , { root: './src/resource/addon/' }) 
+        response.sendFile(file , { root: p('src/resource/addon/') }) 
     });  
 });
-
-//LOAD ASSETS
-app.use('/src/assets', express.static(__dirname + '/src/assets/')); 
 
 //LOAD HOMEPAGE ON MAIN LOCALHOST:8080 
 
 app.get("/", (request, response) => { 
-    response.sendFile('mixer.html' , { root: './src/resource/html/' }) 
+    response.sendFile('mixer.html' , { root: p('src/resource/html/') }) 
 });  
 
 //LOAD FAVICON
 app.get("/favicon.ico", (request, response) => { 
-    response.sendFile('favicon.ico' , { root: './src/resource/' })
+    response.sendFile('favicon.ico' , { root: p('src/resource/') })
 });  
 
 //LOAD ALL HTML AND EXPOSE IT
-var files = fs.readdirSync('./src/resource/html/');
+var files = fs.readdirSync(p('src/resource/html/'));
 files.forEach(file => { 
     var streetaddress= file.substr(0, file.indexOf('.')); 
     app.get("/"+streetaddress, (request, response) => { 
-        response.sendFile(file , { root: './src/resource/html/' }) 
+        response.sendFile(file , { root: p('src/resource/html/') }) 
     });  
 });
 
 //LOAD ALL CSS AND EXPOSE IT
-var filesCss = fs.readdirSync('./src/resource/css/');
+var filesCss = fs.readdirSync(p('src/resource/css/'));
 filesCss.forEach(file => {  
     console.log("/src/resource/css/"+file);
     app.get("/src/resource/css/"+file, (request, response) => { 
-        response.sendFile(file , { root: './src/resource/css/' }) 
+        response.sendFile(file , { root: p('src/resource/css/') }) 
     });  
 });
 
 //LOAD ALL IMG AND EXPOSE IT
-var filesCss = fs.readdirSync('./src/resource/img/');
+var filesCss = fs.readdirSync(p('src/resource/img/'));
 filesCss.forEach(file => {  
     console.log("/src/resource/img/"+file);
     app.get("/src/resource/img/"+file, (request, response) => { 
-        response.sendFile(file , { root: './src/resource/img/' }) 
+        response.sendFile(file , { root: p('src/resource/img/') }) 
     });  
 });
 
 //LOAD ALL JS AND EXPOSE IT
-var filesJs = fs.readdirSync('./src/resource/js/');
+var filesJs = fs.readdirSync(p('src/resource/js/'));
 filesJs.forEach(file => {  
     console.log("/src/resource/js/"+file);
     app.get("/src/resource/js/"+file, (request, response) => { 
-        response.sendFile(file , { root: './src/resource/js/' }) 
+        response.sendFile(file , { root: p('src/resource/js/') }) 
     });  
 });
 
-var filesJsMixer = fs.readdirSync('./src/resource/js/mixer/');
+var filesJsMixer = fs.readdirSync(p('src/resource/js/mixer/'));
 filesJsMixer.forEach(file => {  
     console.log("/src/resource/js/mixer/"+file);
     app.get("/src/resource/js/"+file, (request, response) => { 
-        response.sendFile(file , { root: './src/resource/js/mixer/' }) 
+        response.sendFile(file , { root: p('src/resource/js/mixer/') }) 
     });  
 });
 
-var filesJsRollupBundle = fs.readdirSync('./rollupBundle/');
+var filesJsRollupBundle = fs.readdirSync(p('rollupBundle/'));
 filesJsRollupBundle.forEach(file => {  
     console.log("/rollupBundle/"+file);
     app.get("/src/resource/js/rollupBundle/"+file, (request, response) => { 
-        response.sendFile(file , { root: './rollupBundle/' }) 
+        response.sendFile(file , { root: p('rollupBundle/') }) 
     });  
 });
+
+// R-LAN1: URL della live per gli altri PC, letti da console e Guida del mixer.
+// https solo se il server HTTPS è davvero in ascolto (cert ok e porta libera).
+function liveUrls() {
+    return lanIPv4().map(function(ip) {
+        return https && https.listening ? 'https://' + ip + ':' + httpsPort + '/live?fit=cover'
+                                        : 'http://' + ip + ':' + port + '/live?fit=cover';
+    });
+}
+app.get('/api/lan', (req, res) => res.json({ live: liveUrls() }));
 
 // --- REST API: export / import DB ---
 
@@ -385,9 +393,16 @@ io.sockets.on('connection', async function(socket) {
 
 });  
 
-//ASCOLTA LA PORTA localhost per dire che il progetto è attivo
+//ASCOLTA LE PORTE: nessun host → tutte le interfacce, la live deve essere raggiungibile dalla LAN (R-LAN2)
+function printUrls() {
+    console.log('Mixer: http://localhost:' + port + '/');
+    liveUrls().forEach(function(u) { console.log('Live (network): ' + u); });
+}
 http.listen(port, () => {
-  console.log(`Socket.IO server running at http://localhost:${port}/`);
+    if (!https) return printUrls();
+    // Porta HTTPS occupata: avviso e si resta in HTTP (gli URL stampati diventano http)
+    https.on('error', (e) => { console.warn('WARNING: HTTPS port ' + httpsPort + ' unavailable (' + e.code + '), running HTTP only.'); printUrls(); });
+    https.listen(httpsPort, printUrls);
 });
 
 
