@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="it">
+    
+
+    <head>
+        <title>Hydra Vitreous System</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300&display=swap" rel="stylesheet">
+          
+        <script src="/socket.io/socket.io.js"></script>
+        <link rel="stylesheet" href="/dist/bootstrap.min.css">
+        <script src="/dist/hydra-synth.js"></script>
+    
+
+        <script type="text/javascript" src="./src/resource/js/home.js" defer></script>  
+        <link rel="stylesheet" href="./src/resource/css/basic.css">
+        
+        <meta name="apple-mobile-web-app-title" content="Live Vitreous">
+        <meta name="application-name" content="A PROJECT BY EMILIANO AKA VITREOUS @Vitreous_spaghetti">
+        <meta name="description" content="live console for visual">
+        <meta property="og:locale" content="it_IT"> 
+        <link rel="icon" type="image/x-icon" href="./favicon.ico"> 
+        <meta property="og:type" content="website">
+        <meta property="og:title" content="Live Vitreous">
+        <meta property="og:description" content="live console for visual">
+        <meta property="og:site_name" content="A PROJECT BY EMILIANO AKA VITREOUS  @Vitreous_spaghetti"> 
+        
+    </head> 
+    <body  >
+        <!-- TODO-5.4: about page espansa con shortcut, architettura, route -->
+        <div class="container-fluid" style="max-width:860px;margin:40px auto;">
+          <div class="VitreousWelcome" style="font-size:1em;">
+            <h2 style="color:#fff;">Digital Visual Mixer — Vitreous</h2>
+            <p>Web mixer live per performance visive basato su <a href="https://hydra.ojack.xyz/" target="_blank">Hydra</a>.
+            Autore: <a href="https://www.instagram.com/vitreous_spaghetti" target="_blank">@vitreous_spaghetti</a></p>
+
+            <hr style="border-color:#555;">
+
+            <h4 style="color:#ccc;">Shortcut da tastiera</h4>
+            <table style="width:100%;border-collapse:collapse;color:#ccc;font-size:0.9em;">
+              <tr><td style="padding:4px 8px;"><kbd>Ctrl + Enter</kbd></td><td>Preview locale (non in live)</td></tr>
+              <tr><td style="padding:4px 8px;"><kbd>Ctrl + ↑</kbd></td><td>Salva il canale corrente</td></tr>
+              <tr><td style="padding:4px 8px;"><kbd>Ctrl + ↓</kbd></td><td>Salva e manda in live</td></tr>
+              <tr><td style="padding:4px 8px;"><kbd>Ctrl + ←</kbd></td><td>Canale live precedente</td></tr>
+              <tr><td style="padding:4px 8px;"><kbd>Ctrl + →</kbd></td><td>Canale live successivo</td></tr>
+            </table>
+
+            <hr style="border-color:#555;">
+
+            <h4 style="color:#ccc;">Architettura</h4>
+            <pre style="color:#9c9;font-size:0.8em;background:#111;padding:10px;border-radius:4px;">
+Browser (Mixer :8080/)          Browser (/live)
+  CodeMirror editor           Hydra canvas fullscreen
+  Channel grid                    |
+        |                         |
+        └──── Socket.IO ──────────┘
+                  |
+            Node.js server
+            Express :8080
+            db.json (VitreousDataBase)
+            </pre>
+
+            <hr style="border-color:#555;">
+
+            <h4 style="color:#ccc;">Route disponibili</h4>
+            <ul style="color:#ccc;font-size:0.9em;">
+              <li><code>/</code> oppure <code>/mixer</code> — Pannello di controllo</li>
+              <li><code>/live</code> — Output proiettore/schermo esterno (<code>?fit=cover</code> per fullscreen senza bande)</li>
+              <li><code>/about</code> — Questa pagina</li>
+            </ul>
+
+            <hr style="border-color:#555;">
+
+            <h4 style="color:#ccc;">Link</h4>
+            <ul style="color:#ccc;">
+              <li><a href="https://hydra.ojack.xyz/api/" target="_blank">Hydra API Docs ↗</a></li>
+              <li><a href="./mixer" class="btn btn-sm btn-primary mt-2">→ Vai al Mixer</a></li>
+            </ul>
+          </div>
+        </div>
+        <div id="hydra-ui" style="    z-index: -100;">
+            <div style="width:100%;height:100%;">
+                <canvas id="hydra-canvas" style="imageRendering:pixelated; width:100%;height:100%;aspect-ratio: auto 1920 / 929;"> </canvas>
+            </div>
+        </div>
+    </body> 
+</html>
+
+<!--
+
+
+                                ▒▒▒▒▓▓▒▒▒▒▓▓▒▒░░                          
+                      ▓▓▒▒▒▒▒▒░░▓▓░░▒▒▒▒░░▓▓▓▓▒▒▓▓                    
+                  ░░░░░░░░▒▒    ▒▒  ░░    ░░▒▒▒▒▒▒▓▓▒▒░░              
+              ░░░░░░                    ░░▒▒░░░░░░░░▒▒▓▓▒▒░░          
+            ░░░░░░                          ░░    ░░░░▒▒░░▓▓          
+          ░░░░░░                  ░░▒▒░░            ░░▒▒▒▒▒▒▓▓        
+        ░░░░░░░░                    ░░                ░░▒▒░░▒▒▒▒      
+        ░░░░                                      ▒▒    ▒▒░░░░░░      
+      ░░░░░░    ░░                                        ▒▒▒▒░░      
+    ░░░░░░░░        ░░                                      ▒▒░░░░    
+    ░░░░░░░░    ▒▒  ▒▒      ░░▒▒▓▓▓▓▓▓▒▒▒▒░░        ▒▒  ▒▒░░░░▓▓░░░░  
+  ░░░░░░  ░░      ▓▓  ░░░░▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▓▓░░  ░░░░░░░░░░░░░░░░░░  
+  ░░░░                ░░▓▓▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░▒▒▒▒░░  ▒▒░░        ░░░░░░
+  ░░░░                ▒▒▒▒▒▒░░░░░░░░▒▒▒▒░░  ░░▒▒▒▒  ░░          ▒▒░░░░
+  ░░            ░░  ▒▒▒▒▒▒▒▒░░░░░░██▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░            ░░░░░░
+░░▒▒            ░░  ▒▒▒▒▒▒▒▒░░░░████▒▒██▒▒▒▒▒▒▒▒▒▒▒▒              ░░░░
+▒▒                  ▒▒▒▒▒▒▒▒░░▒▒████  ██▓▓▒▒▒▒▒▒▒▒▒▒          ░░  ░░░░
+░░░░        ▒▒      ▒▒░░▒▒▒▒▒▒▓▓██████████▒▒▒▒▒▒▒▒▒▒            ░░░░░░
+░░░░░░      ▒▒  ▒▒  ▒▒░░░░▒▒▒▒▓▓██████████░░▒▒▒▒▒▒▒▒  ░░        ░░▒▒░░
+░░░░            ░░  ▒▒░░░░  ░░▒▒▓▓██████░░░░▒▒▒▒▓▓▒▒  ░░░░        ░░░░
+░░▒▒            ░░  ░░▒▒▒▒░░░░░░▒▒▒▒▒▒░░░░░░░░▒▒▒▒░░            ░░░░░░
+  ░░░░░░░░            ▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░░░▒▒▒▒▒▒▒▒▒▒░░          ░░▒▒▒▒░░
+  ▒▒░░░░              ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒          ░░░░░░░░░░
+  ▒▒░░▒▒░░            ▒▒░░▒▒▓▓▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒            ░░▒▒░░░░  
+    ░░▒▒▒▒░░░░        ░░    ▒▒▓▓▒▒▒▒▒▒▒▒▒▒░░              ░░  ░░░░░░  
+    ░░▓▓▒▒▒▒░░          ▒▒                                ░░░░░░░░    
+      ▒▒▓▓░░░░░░░░░░░░▒▒  ░░░░                            ░░░░░░      
+        ░░░░░░▒▒▒▒▒▒  ▒▒                                ░░  ░░        
+          ▒▒▒▒▒▒▒▒░░░░░░                              ▒▒░░░░░░        
+            ░░▒▒▒▒▒▒▒▒░░▒▒▒▒▒▒            ░░░░░░    ░░░░░░░░          
+                ▓▓░░▒▒░░░░░░▒▒░░  ░░  ░░░░░░▒▒░░░░░░░░░░░░            
+                  ░░▒▒▒▒▒▒░░▓▓▒▒▒▒░░░░▒▒░░░░░░░░░░░░                  
+                        ▒▒▓▓▓▓▒▒▓▓▒▒░░░░░░░░░░                        
+
+-->

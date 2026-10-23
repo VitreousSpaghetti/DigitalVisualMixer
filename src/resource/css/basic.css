@@ -1,0 +1,266 @@
+/* ===== VITREOUS basic.css — ONE-PAGE LAYOUT (no body scrollbar) ===== */
+
+#hydra-ui { position: fixed; top: 0px; left: 0px; width: 100%; height: 100%; }
+.modal { color: black; }
+#hydra-ui canvas { width: 100%; height: 100%; aspect-ratio: auto 1920 / 1080; }
+
+/* ---- html e body: nessuna scrollbar esterna ---- */
+html { overflow: hidden; height: 100%; width: 100%; }
+body { background: #000; margin: 0px; padding: 0px; width: 100%; height: 100%; color: #fff; line-height: 1.4; overflow: hidden; }
+
+button { background: #363636 !important; border: 2px solid #2c2c2c !important; border-radius: 0% !important; }
+.selectedAction { background-color: white !important; color: #464646; }
+.selectedChannel { background-color: white !important; color: #464646; }
+.VitreousWelcome { text-align: left !important; display: block; background: #7676768a; font-size: 25px; padding: 100px; margin: 100px; border: 5px solid #0000004f; margin-left: 10px; }
+.liveChannel { background: #740000 !important; border: 2px solid #ac0000 !important; border-radius: 0% !important; }
+.liveChannelAutosave { background: #740000 !important; border: 2px solid #ac0000 !important; border-radius: 0% !important; }
+.liveChannel.selectedChannel { background-color: white !important; color: #740000; }
+.navbar-custom { z-index: 99; height: 100%; }
+
+/* ============================================================
+   ONE-PAGE LAYOUT
+   Struttura: #hydra-ui > container-fluid
+     ├── .row.height3    → navbar sticky (altezza auto)
+     └── .row.height97   → flex row, occupa spazio rimanente
+           ├── .col-md-8  → editor (55%), flex colonna
+           └── .col-md-4  → mix panel (45%), flex colonna
+   ============================================================ */
+
+/* Container principale: flex colonna */
+#hydra-ui > .container-fluid.height100 {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0;
+}
+
+/* Navbar: altezza naturale */
+div.height3 { height: auto; flex: 0 0 auto; }
+
+/* Riga principale: flex row, riempie lo spazio rimanente */
+div.height97 {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 0; /* trick flex: impedisce overflow */
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+  margin: 0;
+}
+
+/* Helper altezze */
+div.height100 { height: 100%; }
+div.height90  { height: 100%; }
+
+/* ---- Colonna sinistra: Editor (55%) ---- */
+.col-md-8.height100.code {
+  flex: 0 0 55% !important;
+  max-width: 55% !important;
+  width: 55% !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 0 !important;
+}
+
+/* Row con CodeMirror: cresce, scroll interno */
+.col-md-8.height100.code > .row.height90 {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+}
+
+/* Barra inferiore editor e label: altezza fissa */
+.col-md-8.height100.code > .row.spacingRow { flex: 0 0 auto !important; margin: 0 !important; }
+#editingLabel   { flex: 0 0 auto !important; }
+#hydraErrorPanel { flex: 0 0 auto !important; }
+
+/* ---- CodeMirror ---- */
+#codejs { height: 100%; max-height: 100%; overflow-y: auto; }
+.height90 #codejs { height: 100%; max-height: none; overflow-y: auto; }
+.CodeMirror { height: 100%; min-height: unset; }
+.CodeMirror-scroll { height: 100%; }
+
+/* ---- Colonna destra: Mix panel (45%) ---- */
+.col-md-4.mix {
+  flex: 0 0 45% !important;
+  max-width: 45% !important;
+  width: 45% !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 6px 8px !important;
+  gap: 4px !important;
+  box-sizing: border-box !important;
+}
+
+/* Tutti i pannelli figlio: altezza auto */
+.col-md-4.mix > * { flex: 0 0 auto; min-height: 0; box-sizing: border-box; }
+.col-md-4.mix > .row { flex: 0 0 auto; margin: 0; width: 100%; }
+
+/* Griglia canali: cresce e scrolla internamente */
+/* Wrapper ricerca + griglia canali (PERFORM RF10): prende lui lo spazio che cresce */
+#channelsBody { flex: 1 1 0 !important; min-height: 140px !important; display: flex; flex-direction: column; }
+/* Pannelli sotto i canali: scroll interno, così molte variabili non schiacciano la griglia canali */
+#macroSliders, #macroActionsList, #presetList { max-height: 24vh; overflow-y: auto; }
+#channelsBody > * { flex: 0 0 auto; }
+#multychannel {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+#multychannel .row { margin-left: 0 !important; margin-right: 0 !important; }
+.multychannel { max-height: none; overflow: visible; }
+
+/* ---- Stili base ---- */
+.spacingRow { padding: 10px 0px; }
+.code { background: #282a36; }
+.mix  { background: #505050; }
+.tv   { padding-top: 10px; }
+.tv #hydra-canvas { border: 3px solid white; background: black; }
+.button-channel {}
+.channel-btn { font-size: 0.78em; }
+
+/* ---- Syntax highlight ---- */
+.ͼd { color: #00fb97; }
+.ͼm { color: #e16400; }
+
+/* ---- Dropdown ---- */
+.dropdown-menu li { position: relative; }
+a.dropdown-toggle { padding-bottom: 0px; }
+ul.dropdown-menu { background-color: #212529; border: 1px; }
+a.dropdown-item { color: #ababab; }
+.dropdown-menu .dropdown-submenu { display: none; position: absolute; left: 100%; top: -7px; }
+.dropdown-menu .dropdown-submenu-left { right: 100%; left: auto; }
+.dropdown-menu > li:hover > .dropdown-submenu { display: block; }
+
+/* ---- Disconnect banner ---- */
+#disconnectBanner { font-family: 'Roboto Condensed', sans-serif; font-size: 0.9em; letter-spacing: 0.5px; }
+
+/* ---- Canali vuoti ---- */
+.empty-channel { background: #1a1a1a !important; border: 2px dashed #444 !important; color: #555 !important; font-style: italic; }
+.empty-channel:hover { background: #252525 !important; border-color: #666 !important; }
+
+/* ---- Live badge ---- */
+.live-badge { color: #ff1744; font-weight: bold; font-size: 0.85em; padding: 2px 8px; animation: pulse-live 1.5s ease-in-out infinite; white-space: nowrap; }
+@keyframes pulse-live { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+/* ---- Autosave indicator ---- */
+.as-indicator { font-size: 0.75em; font-weight: bold; padding: 2px 6px; margin-left: 6px; border-radius: 3px; cursor: default; }
+.as-on { color: #00e676; }
+.as-off { color: #555; }
+
+/* ---- Editing label ---- */
+.editing-label { background: #1e1e2e; color: #ababab; font-size: 0.78em; padding: 3px 10px; border-bottom: 1px solid #333; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---- Save and Run ---- */
+.saverun-item { color: #ff6b35 !important; font-weight: bold; }
+.saverun-item:hover { color: #ff3d00 !important; background-color: #2a1a10 !important; }
+
+/* ---- Search canali ---- */
+.channel-search { background: #2a2a2a !important; color: #ccc !important; border: 1px solid #444 !important; border-radius: 3px !important; font-size: 0.82em; }
+.channel-search::placeholder { color: #666; }
+
+/* ---- Drag & drop canali ---- */
+.channel-btn[draggable="true"] { cursor: grab; }
+.channel-btn.drag-over { outline: 2px dashed #ff6b35 !important; outline-offset: 2px; background: #2a1a10 !important; }
+
+/* ---- Pannello errori Hydra ---- */
+.hydra-error-panel { background: #3a0000; color: #ff6b6b; font-family: monospace; font-size: 0.8em; padding: 6px 10px; border-left: 3px solid #ff1744; margin: 4px 0; white-space: pre-wrap; word-break: break-all; }
+
+/* ---- Progress bar transizione ---- */
+.trans-progress-bar { position: fixed; top: 0; left: 0; height: 3px; width: 0%; background: #ff1744; z-index: 10000; pointer-events: none; }
+
+/* ---- Macro flash ---- */
+.macro-flash { background: rgba(74, 158, 255, 0.25) !important; transition: background 0.3s; }
+/* ============================================================
+   PERFORM — navbar, variabili, Macro Manager, vista Perform
+   ============================================================ */
+
+/* ---- Navbar: toggle Perform, monitor input, stato dispositivi (RF5/RF7/RF8) ---- */
+.perform-toggle { color: #fff; font-size: 0.75em; padding: 1px 10px !important; margin-left: 8px; white-space: nowrap; }
+.input-monitor { font-family: monospace; font-size: 0.75em; color: #9ad; padding: 2px 8px; max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mon-unmapped { color: #ffb74d; cursor: pointer; text-decoration: underline dotted; }
+.dev-status { font-size: 0.75em; font-weight: bold; padding: 2px 6px; white-space: nowrap; cursor: pointer; }
+.dev-on   { color: #00e676; }
+.dev-none { color: #ff5252; }  /* nessun dispositivo / scollegato a metà */
+.dev-off  { color: #ff9800; }  /* in attesa del permesso, negato o non supportato */
+
+/* ---- Sezioni comprimibili (RF10) ---- */
+.section-head[data-collapse] { cursor: pointer; user-select: none; }
+.section-head[data-collapse] .col:first-child::before,
+.section-head[data-collapse] .col-12::before { content: '▾ '; color: #888; }
+.section-head.is-collapsed .col:first-child::before,
+.section-head.is-collapsed .col-12::before { content: '▸ '; }
+.collapsed { display: none !important; }
+
+/* ---- Controllo variabile (sidebar + Perform) e righe evidenziate quando la sorgente si muove (RF7) ---- */
+.var-ctl { margin: 3px 0; padding: 2px 4px; border-left: 3px solid transparent; transition: border-color 0.15s, background 0.15s; }
+.var-active { border-left-color: #4a9eff !important; background: rgba(74, 158, 255, 0.18) !important; }
+.var-head { display: flex; gap: 6px; align-items: center; font-size: 0.8em; color: #aaa; }
+.var-name { font-family: monospace; flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.var-val  { color: #4a9eff; font-family: monospace; }
+.var-ctrl { color: #ff9800; font-family: monospace; font-size: 0.9em; } /* posizione knob in soft takeover */
+.var-ctl input[type=range] { width: 100%; accent-color: #4a9eff; cursor: pointer; }
+.var-src  { font-size: 0.7em; color: #777; }
+.var-head .var-src { font-size: 0.85em; white-space: nowrap; }
+.map-row { display: flex; gap: 4px; align-items: center; font-size: 0.8em; color: #ccc; padding: 2px; border-bottom: 1px solid #333; border-left: 3px solid transparent; }
+.map-row kbd { font-size: 0.85em; background: #333; color: #aaa; padding: 1px 4px; }
+
+/* ---- Macro Manager (RF9) ---- */
+.mm .modal-dialog { max-width: 95vw; }
+.mm .modal-content { background: #1e1e1e; border: 1px solid #444; color: #ddd; }
+.mm .modal-header { border-bottom: 1px solid #333; padding: 8px 16px; }
+.mm .modal-title { font-size: 0.95em; }
+.mm label { color: #aaa; font-size: 0.85em; }
+.mm-tabs { display: flex; gap: 4px; border-bottom: 1px solid #333; margin-bottom: 10px; }
+.mm-tab { color: #aaa; padding: 6px 14px !important; font-size: 0.85em; }
+.mm-tab.active { color: #fff; border-bottom: 2px solid #4a9eff !important; }
+.mm-toolbar, .mm-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+.mm-btn { color: #ddd; padding: 2px 10px !important; font-size: 0.82em; }
+.mm-primary { background: #1a4a7a !important; border-color: #4a9eff !important; color: #fff; }
+.mm-input { background: #2a2a2a; color: #fff; border: 1px solid #555; padding: 2px 6px; font-size: 0.85em; }
+.mm-num { width: 80px; }
+.mm-table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+.mm-table th { color: #888; font-weight: normal; border-bottom: 1px solid #333; padding: 4px 6px; }
+.mm-table td { padding: 4px 6px; border-bottom: 1px solid #2a2a2a; }
+.mm-table tr { border-left: 3px solid transparent; }
+.mm-key { font-family: monospace; color: #4a9eff; }
+.mm-conflict td:first-child { color: #ffb74d; }
+.mm-conflict td:first-child::before { content: '⚠ '; }
+.mm-actions { white-space: nowrap; text-align: right; }
+.mm-empty { color: #666; text-align: center; padding: 12px; }
+.mm-editor { background: #1a1a2a; border: 1px solid #4a7aaa; padding: 10px; margin-bottom: 10px; }
+.mm-ed-title { font-weight: bold; margin-bottom: 8px; }
+.mm-src { font-family: monospace; color: #ffd54f; min-width: 90px; }
+.mm-hint { font-size: 0.78em; color: #999; margin-bottom: 8px; }
+
+/* ---- Vista Perform (RF8): editor nascosto, preview grande a sinistra, controlli a destra ---- */
+#performPanel { display: none; }
+body.perform-mode .col-md-8.code { display: none !important; }
+body.perform-mode .col-md-4.mix {
+  flex: 0 0 100% !important; max-width: 100% !important; width: 100% !important;
+  display: grid !important; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 12px !important; background: #000; padding: 10px !important;
+}
+body.perform-mode .mix > * { display: none !important; }
+body.perform-mode .mix > #previewRow { display: block !important; align-self: start; }
+body.perform-mode .mix > #performPanel { display: block !important; overflow-y: auto; min-height: 0; }
+.perform-title { font-size: 0.85em; color: #888; text-transform: uppercase; letter-spacing: 1px; margin: 10px 0 6px; }
+.perform-vars { display: flex; flex-wrap: wrap; gap: 8px; }
+.var-ctl.var-vert { display: flex; flex-direction: column; align-items: center; width: 92px; padding: 6px; margin: 0; background: #111; border: 1px solid #333; border-left-width: 3px; }
+.var-vert .var-head { flex-direction: column; gap: 2px; font-size: 0.85em; color: #ddd; text-align: center; }
+.var-vert .var-name { max-width: 80px; }
+.var-vert .var-val { font-size: 1.5em; font-weight: bold; }
+.var-vert input[type=range] { writing-mode: vertical-lr; direction: rtl; width: 40px; height: 170px; margin: 6px 0; }
+.var-vert .var-src { font-size: 0.75em; color: #aaa; text-align: center; }
+.pad-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 6px; }
+.pad { min-height: 64px; color: #fff; font-size: 1em; padding: 6px !important; overflow: hidden; }
+.pad:hover { background: #4a4a4a !important; }
+.pad.pad-live { background: #740000 !important; border-color: #ff1744 !important; }
