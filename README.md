@@ -15,6 +15,8 @@ Author: [Emiliano Brazzoli @vitreous_spaghetti](https://www.instagram.com/vitreo
 | Windows 10/11 64-bit | **[DigitalVisualMixer.exe](https://github.com/VitreousSpaghetti/DigitalVisualMixer/releases/latest/download/DigitalVisualMixer.exe)** |
 | macOS, Apple Silicon (M1, M2, …) | **[DigitalVisualMixer-macos-arm64.zip](https://github.com/VitreousSpaghetti/DigitalVisualMixer/releases/latest/download/DigitalVisualMixer-macos-arm64.zip)** |
 | macOS, Intel | **[DigitalVisualMixer-macos-x64.zip](https://github.com/VitreousSpaghetti/DigitalVisualMixer/releases/latest/download/DigitalVisualMixer-macos-x64.zip)** |
+| Linux x64 (64-bit PC) | **[DigitalVisualMixer-linux-x64.tar.gz](https://github.com/VitreousSpaghetti/DigitalVisualMixer/releases/latest/download/DigitalVisualMixer-linux-x64.tar.gz)** |
+| Linux arm64 (Raspberry Pi OS 64-bit, ARM boards) | **[DigitalVisualMixer-linux-arm64.tar.gz](https://github.com/VitreousSpaghetti/DigitalVisualMixer/releases/latest/download/DigitalVisualMixer-linux-arm64.tar.gz)** |
 
 [All releases](https://github.com/VitreousSpaghetti/DigitalVisualMixer/releases)
 
@@ -55,6 +57,28 @@ First run:
 - Your data lives in `~/Library/Application Support/DigitalVisualMixer` (Finder: *Go → Go to
   Folder…*), so it survives updates and moving the app.
 - **Update** = replace only the `DigitalVisualMixer` file.
+
+### Linux
+
+Requires a 64-bit glibc distribution (Ubuntu, Debian, Fedora, Mint, Raspberry Pi OS 64-bit, …;
+not Alpine/musl, not 32-bit Raspberry Pi OS) and **Chrome or Chromium** for MIDI (Firefox has no
+MIDI support). Which file? `uname -m`: `x86_64` → `linux-x64`, `aarch64` → `linux-arm64`.
+
+```bash
+mkdir -p ~/DigitalVisualMixer && cd ~/DigitalVisualMixer
+tar -xzf ~/Downloads/DigitalVisualMixer-linux-x64.tar.gz
+./DigitalVisualMixer
+```
+
+- The default browser opens on the mixer (`xdg-open`) and the terminal shows the URLs, plus a
+  reminder that MIDI needs Chrome or Chromium. Without a desktop, open the URL by hand.
+- Start it from a terminal and stop it with `Ctrl+C`: launched by double-click from a file manager
+  it may run with no window to close.
+- "Permission denied" (extracted with a graphical tool or copied to a FAT/NTFS drive):
+  `chmod +x DigitalVisualMixer`.
+- Your data lives in the `data/` folder next to the binary, so keep it in a folder you own (not
+  `/opt` or `/usr/local/bin`), or start it with `DATA_DIR=/path/to/folder ./DigitalVisualMixer`.
+- **Update** = replace only the `DigitalVisualMixer` file; `data/` stays.
 
 ## Quick start
 
@@ -117,7 +141,8 @@ npm start       # http://localhost:8080/
 ```
 
 Build the Windows exe: `npm run package:win` → `packaging/dist/DigitalVisualMixer.exe`.
-The macOS binaries are built on a Mac (or by the release workflow).
+The macOS binaries are built on a Mac, the Linux ones with `npm run build:linux --prefix packaging`
+(or by the release workflow).
 Details in [packaging/README.md](packaging/README.md).
 
 ### Configuration
@@ -126,11 +151,11 @@ Environment variables (also from a `.env` file in the project root, except `DATA
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PORT` | `8080` | HTTP port (mixer and local live) |
-| `HTTPS_PORT` | `8443` | HTTPS port (live on another PC) |
-| `DATA_DIR` | `src/resource` (exe: `data\` next to the exe; macOS app: `~/Library/Application Support/DigitalVisualMixer`) | Folder of `db.json` and the HTTPS certificate |
+| `PORT` | `8080` | HTTP port (mixer and local live). Standalone binaries: also `port=` in `conf.properties` in the data folder |
+| `HTTPS_PORT` | `8443` | HTTPS port (live on another PC). Standalone binaries: also `https.port=` in `conf.properties` |
+| `DATA_DIR` | `src/resource` (exe / Linux: `data` next to the binary; macOS app: `~/Library/Application Support/DigitalVisualMixer`) | Folder of `db.json` and the HTTPS certificate |
 | `MAX_CHANNELS` | `36` | Informational only: the channels are the ones in the DB |
-| `NO_BROWSER` | unset | Exe / macOS app only: `1` = do not open the browser at startup |
+| `NO_BROWSER` | unset | Standalone binaries only: `1` = do not open the browser at startup |
 
 ### Routes
 
@@ -166,7 +191,7 @@ src/                 server (app.js, manager.js, cert.js)
 src/resource/html/   mixer, live, about pages
 src/resource/css/    styles
 src/resource/js/     browser code (mixer/ = mixer modules)
-packaging/           Windows exe and macOS builds
+packaging/           Windows, macOS and Linux builds
 .github/workflows/   release build
 test/                checks and demo data
 ```
@@ -176,8 +201,9 @@ test/                checks and demo data
 1. Tag the version, e.g. `git tag v1.1.0 && git push origin v1.1.0`.
 2. Create (publish) a GitHub release from the tag.
 3. Publishing starts the [release workflow](.github/workflows/release.yml): it builds
-   `DigitalVisualMixer.exe`, `DigitalVisualMixer-macos-arm64.zip` and
-   `DigitalVisualMixer-macos-x64.zip` from a clean checkout, starts each one to check that it
+   `DigitalVisualMixer.exe`, `DigitalVisualMixer-macos-arm64.zip`,
+   `DigitalVisualMixer-macos-x64.zip`, `DigitalVisualMixer-linux-x64.tar.gz` and
+   `DigitalVisualMixer-linux-arm64.tar.gz` from a clean checkout, starts each one to check that it
    answers over HTTP, and attaches them to the release (a failed check = nothing attached).
    The download links above (`releases/latest/download/...`) rely on these exact file names.
    Re-running it on the same release replaces the files.

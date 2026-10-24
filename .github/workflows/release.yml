@@ -29,6 +29,13 @@ jobs:
           - os: macos-15-intel
             script: build:mac
             asset: DigitalVisualMixer-macos-x64.zip
+          # Same rule for Linux: ubuntu-24.04-arm is the free arm64 runner for public repos
+          - os: ubuntu-latest
+            script: build:linux
+            asset: DigitalVisualMixer-linux-x64.tar.gz
+          - os: ubuntu-24.04-arm
+            script: build:linux
+            asset: DigitalVisualMixer-linux-arm64.tar.gz
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -51,12 +58,22 @@ jobs:
         working-directory: packaging/dist
         run: zip ${{ matrix.asset }} DigitalVisualMixer
 
-      # Smoke test on what users download: the exe, or the binary extracted from the zip
+      # tar.gz: the usual Linux format, and it keeps the execute bit like the zip above
+      - name: Tar (Linux)
+        if: runner.os == 'Linux'
+        working-directory: packaging/dist
+        run: tar -czf ${{ matrix.asset }} DigitalVisualMixer
+
+      # Smoke test on what users download: the exe, or the binary extracted from the zip / tar.gz
       - name: Smoke test
         run: |
           mkdir smoke && cd smoke
           if [ "$RUNNER_OS" = macOS ]; then
             unzip ../packaging/dist/${{ matrix.asset }}
+            bin=./DigitalVisualMixer
+          elif [ "$RUNNER_OS" = Linux ]; then
+            # Also exercises the default data/ next to the binary (created in smoke/)
+            tar -xzf ../packaging/dist/${{ matrix.asset }}
             bin=./DigitalVisualMixer
           else
             bin=../packaging/dist/DigitalVisualMixer.exe

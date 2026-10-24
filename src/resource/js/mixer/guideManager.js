@@ -126,7 +126,11 @@ function _sections() {
             '<li><b>Live window is black</b> — send a channel live (Save and Run) after opening it; check the channel works in Preview.</li>' +
             '<li><b>a.fft does not move</b> — open ' + icon('volume-high') + ' <b>Audio</b>: check the source and the meter; the browser may need one click on the page to start audio.</li>' +
             '<li><b>Action does nothing</b> — the preset it applies was deleted: look for the <i>missing</i> mark in Mappings.</li>' +
-            '<li><b>Paste from the menu does nothing</b> — the browser blocks the clipboard outside localhost: use Ctrl+V.</li></ul>'],
+            '<li><b>Paste from the menu does nothing</b> — the browser blocks the clipboard outside localhost: use Ctrl+V.</li>' +
+            // CONF_PORTS RF8/E5: unico punto della UI che spiega il file (modifica solo a mano, nessuna UI)
+            '<li><b>Change the port</b> (app downloaded from the release) — close the app, edit <code>port=</code> / <code>https.port=</code> in <code>conf.properties</code> ' +
+                'in the data folder (path printed in the console at startup) and start it again. The new address is a new site for the browser: ' +
+                'mixer and Perform preferences start from the defaults and MIDI / microphone / camera permissions are asked again. Channels and mappings are not affected.</li></ul>'],
         ['glossary', 'Glossary', 'book',
             '<table class="guide-table">' +
             '<tr><td>Channel</td><td>a saved Hydra sketch</td></tr>' +
