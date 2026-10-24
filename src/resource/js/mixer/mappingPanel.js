@@ -10,9 +10,9 @@
  */
 
 import { emit } from './mixerEmitter.js';
-import { getMacroList, getVarDef, getCurrentMacroVars, MODES } from './macroVarManager.js';
-import { getPresetList } from './presetManager.js';
-import { channelMixer, channelSelected } from './mixerManager.js';
+import { getMacroList, getVarDef, MODES } from './macroVarManager.js';
+import { getPresetList, presetRowHtml, onPresetClick } from './presetManager.js';
+import { channelMixer } from './mixerManager.js';
 import { startLearn, cancelLearn } from './mappingManager.js';
 import { parseJSON, isPress, sourceLabel, sourceFamily, sourceId, sourceIcon } from './sourceUtil.js';
 import { showToast } from './toastManager.js';
@@ -78,6 +78,7 @@ export function openMappingPanel(opts) {
                     '<th>Range</th><th>Live value</th><th></th></tr></thead><tbody id="mmBody"></tbody></table>' +
             '</div>' +
             '<div id="mmTabPre" style="display:none">' +
+                '<div class="mm-toolbar"><button id="mmPreAdd" class="mm-btn mm-add" data-tip="Save the current state (channel, variables, transition) as a preset">' + icon('plus') + ' Save preset</button></div>' +
                 '<table class="mm-table"><thead><tr><th>Name</th><th>Channel</th><th>Transition</th><th></th></tr></thead>' +
                 '<tbody id="mmPreBody"></tbody></table>' +
             '</div>' +
@@ -105,7 +106,15 @@ export function openMappingPanel(opts) {
 
 /** Ri-renderizza tabelle e contatori se la modal è aperta (lista macro/preset cambiata) */
 export function refreshMappingPanel() {
-    if (_modal) _renderTable();
+    if (!_modal) return;
+    _renderTable();
+    // PRESET E1: preset creato/eliminato da un'altra finestra con l'editor aperto → le select
+    // "Apply preset" si ricostruiscono tenendo la scelta (che diventa "#id (missing)" se sparita)
+    _modal.querySelectorAll('#mmSteps .mm-step').forEach(function(div) {
+        if (div.querySelector('.mm-step-type').value !== 'applyPreset') return;
+        var sel = div.querySelector('.mm-step-param select'), v = sel ? parseInt(sel.value) : NaN;
+        _stepParam(div, isNaN(v) ? null : { type: 'applyPreset', presetId: v });
+    });
 }
 
 function _onClick(e) {
@@ -137,19 +146,9 @@ function _onClick(e) {
     if (t.id === 'mmSave')        _save();
     if (t.id === 'mmCancel')      _closeEditor();
 
-    if (t.classList.contains('mmp-apply') && window.applyPresetById) window.applyPresetById(id);
-    if (t.classList.contains('mmp-update')) {
-        var typeEl = $('transitionType'), durEl = $('transitionDuration');
-        emit('update_preset', {
-            id: id, channelId: channelSelected, macroVars: getCurrentMacroVars(),
-            transition: { type: typeEl ? typeEl.value : 'cut', duration: durEl ? parseInt(durEl.value) || 0 : 0 }
-        });
-        showToast('Preset updated with the current state');
-    }
-    if (t.classList.contains('mmp-del')) {
-        var p = getPresetList().find(function(x) { return x.id === id; });
-        if (p && confirm('Delete the preset "' + (p.name || id) + '"?')) emit('delete_preset', id);
-    }
+    if (t.id === 'mmPreAdd' && window.selectActionExec) window.selectActionExec('addPreset');
+    // Azioni preset: stesso handler della sidebar (PRESET RF4)
+    onPresetClick(e);
 }
 
 /** Bottone Learn: in ascolto finché non arriva una sorgente (o Esc) */
@@ -162,12 +161,20 @@ function _learnButton(btn, onSrc) {
     });
 }
 
+// Riepilogo HTML degli step. Il preset si mostra per nome (legato all'id, segue i rename);
+// se è stato eliminato lo step resta, marcato "missing" (PRESET RF2)
 function _summary(actions) {
+    var presets = getPresetList();
     return (actions || []).map(function(a) {
         var t = ACTION_TYPES.find(function(x) { return x.value === a.type; });
-        var label = t ? t.label : a.type;
-        if (a.channelId !== undefined) label += ' ' + a.channelId;
-        if (a.presetId !== undefined) label += ' #' + a.presetId;
+        var label = _esc(t ? t.label : a.type);
+        if (a.channelId !== undefined) label += ' ' + _esc(a.channelId);
+        if (a.type === 'applyPreset') {
+            var pr = presets.find(function(x) { return x.id === a.presetId; });
+            label += pr ? ' "' + _esc(pr.name || '#' + pr.id) + '"'
+                : ' <span class="mm-missing" data-tip="The preset used by this action was deleted: edit the action to choose another one">#' +
+                  _esc(a.presetId ?? '?') + ' — missing</span>';
+        }
         return label;
     }).join(' → ');
 }
@@ -196,7 +203,7 @@ function _renderTable() {
                     '<span class="var-ctrl" data-var-ctrl="' + _esc(key) + '"></span></td>';
         } else {
             cells = '<td>' + _srcHtml(src) + '</td>' +
-                '<td>' + _esc((m.name || '') + ': ' + _summary(p.actions)) + '</td>' +
+                '<td>' + _esc(m.name || '') + ': ' + _summary(p.actions) + '</td>' +
                 '<td>Action</td><td></td><td></td>';
         }
         return '<tr' + attrs + (conflict ? ' class="mm-conflict" data-tip="The same source is used by more than one row"' : '') + '>' +
@@ -210,14 +217,8 @@ function _renderTable() {
 
     var presets = getPresetList();
     $('mmCountPre').textContent = '(' + presets.length + ')';
-    $('mmPreBody').innerHTML = presets.map(function(pr) {
-        var tr = parseJSON(pr.transition, {});
-        return '<tr><td>' + _esc(pr.name || pr.id) + '</td><td>ch: ' + _esc(pr.channelId) + '</td>' +
-            '<td>' + _esc((tr.type || '—') + '/' + (tr.duration !== undefined ? tr.duration + 'ms' : '?')) + '</td>' +
-            '<td class="mm-actions"><button class="mm-btn mmp-apply" data-id="' + pr.id + '" data-tip="Apply (does not go live)" aria-label="Apply">' + icon('play') + '</button>' +
-            '<button class="mm-btn mmp-update" data-id="' + pr.id + '" data-tip="Update with the current state" aria-label="Update">' + icon('rotate-left') + '</button>' +
-            '<button class="mm-btn mmp-del" data-id="' + pr.id + '" data-tip="Delete" aria-label="Delete">' + icon('trash') + '</button></td></tr>';
-    }).join('') || '<tr><td colspan="4" class="mm-empty">No presets saved</td></tr>';
+    $('mmPreBody').innerHTML = presets.map(function(pr) { return presetRowHtml(pr, true); }).join('') ||
+        '<tr><td colspan="4" class="mm-empty">No presets yet: press Save preset to save the current channel, variables and transition</td></tr>';
 }
 
 function _num(label, id, cls, title) {
@@ -346,13 +347,23 @@ function _stepParam(div, action) {
     var wrap = div.querySelector('.mm-step-param');
     wrap.innerHTML = '';
     if (!t || !t.param) return;
-    var items = t.param === 'channelId'
-        ? channelMixer.map(function(c) { return { id: c.id, label: (c.name || c.id) + ' [' + c.id + ']' }; })
-        : getPresetList().map(function(pr) { return { id: pr.id, label: pr.name || 'Preset #' + pr.id }; });
+    var cur = action ? action[t.param] : undefined, items;
+    if (t.param === 'channelId') {
+        items = channelMixer.map(function(c) { return { id: c.id, label: (c.name || c.id) + ' [' + c.id + ']' }; });
+    } else {
+        items = getPresetList().map(function(pr) { return { id: pr.id, label: pr.name || 'Preset #' + pr.id }; });
+        // RF9: preset eliminato → resta selezionato come "missing" invece di passare in silenzio a un altro
+        if (cur != null && !items.some(function(i) { return i.id === cur; })) items.unshift({ id: cur, label: '#' + cur + ' (missing)' });
+        // RF8: nessun preset → niente select vuota che salverebbe presetId: NaN
+        if (!items.length) {
+            wrap.innerHTML = '<select class="mm-input" disabled><option value="">No presets: save one first</option></select>';
+            return;
+        }
+    }
     wrap.innerHTML = '<select class="mm-input">' + items.map(function(i) {
         return '<option value="' + i.id + '">' + _esc(i.label) + '</option>';
     }).join('') + '</select>';
-    if (action && action[t.param] !== undefined) wrap.querySelector('select').value = action[t.param];
+    if (cur !== undefined) wrap.querySelector('select').value = cur;
 }
 
 function _readSteps() {
@@ -395,6 +406,18 @@ function _save() {
     } else {
         var name = $('mmName').value.trim();
         if (!name) { showToast('Name is required', 'error'); return; }
+        // RF8: uno step "Apply preset" senza preset scelto non si salva; messaggio accanto allo step
+        var noPreset = Array.from(document.querySelectorAll('#mmSteps .mm-step')).filter(function(div) {
+            var sel = div.querySelector('.mm-step-param select');
+            return div.querySelector('.mm-step-type').value === 'applyPreset' && !(sel && sel.value);
+        });
+        if (noPreset.length) {
+            noPreset.forEach(function(div) {
+                var wrap = div.querySelector('.mm-step-param');
+                if (!wrap.querySelector('.mm-step-err')) wrap.insertAdjacentHTML('beforeend', '<span class="mm-step-err">Save a preset first, or remove this step</span>');
+            });
+            return;
+        }
         var actions = _readSteps();
         if (actions.some(function(a) { return a.type === 'rangeChannel'; }) && !(src && src.type === 'note' && src.nTo > src.n)) {
             showToast('Note range → channels needs a note with "up to note"', 'error');

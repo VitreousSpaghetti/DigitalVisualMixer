@@ -64,6 +64,16 @@ if (existsSync(DB_PATH)) {
 // let (non const) per permettere la ri-assegnazione in reloadDb()
 let db = await Database.create(DB_PATH, { eager: true });
 
+// Due eventi socket quasi simultanei (es. Apply preset con autosave: save_channel + save_transition)
+// scrivevano db.json in parallelo e su Windows il rename atomico del secondo falliva con EPERM,
+// facendo cadere il server. Le flush vanno in coda, una alla volta.
+var _flushQueue = Promise.resolve();
+function flush() {
+    var run = _flushQueue.then(function() { return db.flush(); });
+    _flushQueue = run.catch(function() {}); // un errore non blocca le flush successive
+    return run;
+}
+
 const existingEntities = await db.entityManager.listEntities();
 
 // Crea entità channel se assente.
@@ -104,7 +114,7 @@ if (!existingEntities.includes(ENTITY_TRANSITION)) {
     });
     // Inserisce il record di default
     await db.recordManager.insert(ENTITY_TRANSITION, { id: 0, type: 'cut', duration: 0 });
-    await db.flush();
+    await flush();
 }
 
 // Crea entità macro se assente (schema variabili/azioni macro live)
@@ -131,7 +141,7 @@ if (savedChannels.length > 0) {
             });
         } catch (e) {}
     }
-    await db.flush();
+    await flush();
 }
 
 // --- RELOAD DB (usato da POST /api/db/import) ---
@@ -186,7 +196,7 @@ export var saveChannel = async function (channelToSave) {
             code: channelToSave.code ?? ''
         });
     }
-    await db.flush();
+    await flush();
 };
 
 export var searchChannel = async function (channelID) {
@@ -206,7 +216,7 @@ export var reorderChannels = async function (orderedIds) {
             // Ignora RecordNotFoundError su ID non presenti nel DB
         }
     }
-    await db.flush();
+    await flush();
     console.log('manager: reorderChannels → sortOrder aggiornato per', orderedIds.length, 'canali');
 };
 
@@ -225,7 +235,7 @@ export var createChannel = async function() {
     var maxId = channels.reduce(function(m, c) { return Math.max(m, c.id); }, -1);
     var newId = maxId + 1;
     await db.recordManager.insert(ENTITY_CHANNEL, { id: newId, name: '', code: '' });
-    await db.flush();
+    await flush();
     console.log('manager: createChannel → nuovo canale id=' + newId);
     return newId;
 };
@@ -237,7 +247,7 @@ export var createChannel = async function() {
  */
 export var deleteChannel = async function(channelId) {
     await db.recordManager.deleteRecord(ENTITY_CHANNEL, { id: channelId });
-    await db.flush();
+    await flush();
     console.log('manager: deleteChannel → eliminato canale id=' + channelId);
 };
 
@@ -250,7 +260,7 @@ export var getTransition = async function () {
     if (!t) {
         t = { id: 0, type: 'cut', duration: 0 };
         await db.recordManager.insert(ENTITY_TRANSITION, t);
-        await db.flush();
+        await flush();
     }
     return t;
 };
@@ -309,7 +319,7 @@ export var saveMacro = async function (macro) {
     } else {
         await db.recordManager.insert(ENTITY_MACRO, { id: macro.id, ...fields });
     }
-    await db.flush();
+    await flush();
     console.log('manager: saveMacro id=' + macro.id);
 };
 
@@ -330,7 +340,7 @@ export var createMacro = async function (data) {
         trigger:   data?.trigger   ?? null,
         sortOrder: data?.sortOrder ?? newId
     });
-    await db.flush();
+    await flush();
     console.log('manager: createMacro → id=' + newId);
     return newId;
 };
@@ -341,7 +351,7 @@ export var createMacro = async function (data) {
  */
 export var deleteMacro = async function (macroId) {
     await db.recordManager.deleteRecord(ENTITY_MACRO, { id: macroId });
-    await db.flush();
+    await flush();
     console.log('manager: deleteMacro id=' + macroId);
 };
 
@@ -396,7 +406,7 @@ export var createPreset = async function (data) {
         transition: transitionStr,
         createdAt:  new Date().toISOString()
     });
-    await db.flush();
+    await flush();
     console.log('manager: createPreset → id=' + newId);
     return newId;
 };
@@ -407,7 +417,7 @@ export var createPreset = async function (data) {
  */
 export var deletePreset = async function (presetId) {
     await db.recordManager.deleteRecord(ENTITY_PRESET, { id: presetId });
-    await db.flush();
+    await flush();
     console.log('manager: deletePreset id=' + presetId);
 };
 
@@ -430,7 +440,7 @@ export var updatePreset = async function (presetId, data) {
             ? JSON.stringify(data.transition) : (data.transition ?? '{}');
     }
     await db.recordManager.update(ENTITY_PRESET, { id: presetId }, fields);
-    await db.flush();
+    await flush();
     console.log('manager: updatePreset id=' + presetId);
 };
 
@@ -446,5 +456,47 @@ export var setTransition = async function (transitionData) {
     } else {
         await db.recordManager.insert(ENTITY_TRANSITION, { id: 0, ...record });
     }
-    await db.flush();
+    await flush();
+};
+
+// --- AUDIO (af/AUDIO.md RF9) ---
+// Sorgente audio scelta nel pannello Audio: record globale unico id=0 {type, deviceName}.
+// L'entità si crea al primo uso e non all'avvio: un DB importato da una versione precedente
+// (reloadDb) non la contiene e non ripassa dalle migrazioni in testa al file.
+const ENTITY_AUDIO = 'audio';
+const AUDIO_TYPES = ['off', 'default', 'device', 'system'];
+
+async function ensureAudioEntity() {
+    if ((await db.entityManager.listEntities()).includes(ENTITY_AUDIO)) return;
+    await db.entityManager.createEntity(ENTITY_AUDIO, {
+        type: 'table',
+        values: ['id', 'type', 'deviceName'],
+        id: ['id'],
+        notnullable: [],
+        unique: [],
+        nested: []
+    });
+}
+
+// Default 'default' (mic predefinito) = comportamento di sempre prima del pannello
+export var getAudio = async function () {
+    await ensureAudioEntity();
+    var r = await db.recordManager.findByIdSingle(ENTITY_AUDIO, 0);
+    return r ? { type: r.type, deviceName: r.deviceName || '' } : { type: 'default', deviceName: '' };
+};
+
+// Arriva dal socket: tipo fuori elenco → default, nome dispositivo come stringa corta
+export var setAudio = async function (data) {
+    await ensureAudioEntity();
+    var record = {
+        type: AUDIO_TYPES.includes(data && data.type) ? data.type : 'default',
+        deviceName: data && data.type === 'device' ? String(data.deviceName || '').slice(0, 200) : ''
+    };
+    if (await db.recordManager.findByIdSingle(ENTITY_AUDIO, 0)) {
+        await db.recordManager.update(ENTITY_AUDIO, { id: 0 }, record);
+    } else {
+        await db.recordManager.insert(ENTITY_AUDIO, { id: 0, ...record });
+    }
+    await flush();
+    return record;
 };

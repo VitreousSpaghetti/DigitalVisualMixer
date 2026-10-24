@@ -205,6 +205,35 @@ socket.on('set_toload', function(variable) {
     }
 });
 
+// AUDIO RF8: la Live applica la stessa scelta del mixer, ma la apre sui dispositivi di QUESTO PC;
+// lo stato effettivo torna al mixer (RF11) a ogni cambio, anche dopo una riconnessione del socket
+socket.on('get_audio', function(choice) {
+    DVMAudio.apply(choice, false);
+});
+
+var audioTip = null, audioTipTimer = null;
+var liveFit = new URLSearchParams(window.location.search).get('fit');
+DVMAudio.onChange(function(st) {
+    socket.emit('audio_status', st);
+    // Cattura del PC (o AudioContext fermo) = serve un clic su questa pagina: invito discreto in basso
+    var need = st.status === 'waiting' || st.status === 'stopped';
+    if (!audioTip) {
+        audioTip = document.createElement('div');
+        audioTip.className = 'live-audio-tip';
+        document.body.appendChild(audioTip);
+    }
+    audioTip.textContent = st.type === 'system' ? 'Click to capture PC audio' : 'Click to start audio';
+    audioTip.classList.toggle('show', need);
+    // In ?fit=cover la Live è sul proiettore: l'invito sparisce da solo, il clic resta valido
+    clearTimeout(audioTipTimer);
+    if (need && liveFit === 'cover') audioTipTimer = setTimeout(function() { audioTip.classList.remove('show'); }, 5000);
+});
+// Clic ovunque: getDisplayMedia vuole il gesto su questa pagina (l'AudioContext lo sblocca audioInput.js)
+document.addEventListener('click', function() {
+    var st = DVMAudio.state();
+    if (st.type === 'system' && (st.status === 'waiting' || st.status === 'stopped')) DVMAudio.capture();
+});
+
 var resetAudioAndSpeed = function(){
     a.setScale(10)
     a.setBins(6)

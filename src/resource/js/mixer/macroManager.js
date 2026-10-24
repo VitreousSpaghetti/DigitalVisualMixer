@@ -73,11 +73,10 @@ export function executeActions(actions, macroName, macroId, noteOffset) {
                 var ch = window.getChannelList ? window.getChannelList()[noteOffset || 0] : null;
                 if (ch && window.runChannel) window.runChannel(ch.id);
                 break;
-            // Applica un preset per id — window.applyPresetById esposto da deckManager.js
+            // Applica un preset per id — window.applyPresetById esposto da deckManager.js.
+            // Preset mancante: toast con il nome della mappatura, il forEach prosegue (PRESET RF1)
             case 'applyPreset':
-                if (action.presetId !== undefined && window.applyPresetById) {
-                    window.applyPresetById(action.presetId);
-                }
+                if (window.applyPresetById) window.applyPresetById(action.presetId, macroName);
                 break;
             default:
                 console.warn('macroManager: azione sconosciuta "' + action.type + '"');

@@ -1,13 +1,13 @@
 
-import { run,prev,save,saveAndRun,load,setLoadprev,selectChannelLoad,selectChannelClick,autosave,initMixer,nextRunLive,prevRunLive, addChannel, deleteCurrentChannel, channelSelected, channelMixer, runChannel} from "./mixerManager.js";
+import { run,prev,save,saveAndRun,load,setLoadprev,selectChannelLoad,selectChannelClick,autosave,initMixer,nextRunLive,prevRunLive, addChannel, deleteCurrentChannel, channelMixer, runChannel} from "./mixerManager.js";
 import { initMirror } from "./rollupBundle/codeMirrorManager.js";
 import { initMacro } from "./macroManager.js";
 import { initNav } from "./navManager.js";
 import { inithydra } from "./hydraManager.js";
-import { initMacroVars, getCurrentMacroVars } from "./macroVarManager.js";
+import { initMacroVars } from "./macroVarManager.js";
 import { emit } from "./mixerEmitter.js";
 import { ModalPanel } from "./modalManager.js";
-import { initPresets, applyPresetById } from "./presetManager.js";
+import { initPresets, applyPresetById, currentPresetState } from "./presetManager.js";
 import { initMappings } from "./mappingManager.js";
 import { openMappingPanel } from "./mappingPanel.js";
 import { initPerform } from "./performManager.js";
@@ -16,6 +16,7 @@ import { initContextMenu } from "./contextMenu.js";
 import { initGuide, openGuide } from "./guideManager.js";
 import { initPalette, openPalette } from "./palette.js";
 import { showToast } from "./toastManager.js";
+import { initAudioPanel, openAudioPanel } from "./audioPanel.js";
 
 var apiLink = 'https:/'+'/hydra.ojack.xyz/api/';
 
@@ -77,6 +78,8 @@ var selectActionExec = function (selectedAction) {
   if(selectedAction === 'addPreset') { showAddPresetModal(); }
   // Apre il Macro Manager (tabella Mappature + tab Preset, PERFORM RF9)
   if(selectedAction === 'openMacroManager') { openMappingPanel(); }
+  // Pannello Audio: sorgente di a.fft per mixer e Live (af/AUDIO.md RF1)
+  if(selectedAction === 'openAudio') { openAudioPanel(); }
 }
 
 /**
@@ -99,20 +102,8 @@ function showAddPresetModal() {
         function() {
             var name = (document.getElementById('presetNameInput')?.value || '').trim();
             if (!name) return;
-            // Cattura stato corrente dal mixer
-            var macroVars  = getCurrentMacroVars();
-            var typeEl     = document.getElementById('transitionType');
-            var durEl      = document.getElementById('transitionDuration');
-            var transition = {
-                type:     typeEl ? typeEl.value : 'cut',
-                duration: durEl  ? parseInt(durEl.value) || 0 : 0
-            };
-            emit('create_preset', {
-                name:       name,
-                channelId:  channelSelected,
-                macroVars:  macroVars,
-                transition: transition
-            });
+            // Stato corrente dal mixer: stessa cattura di Update (presetManager.js)
+            emit('create_preset', Object.assign({ name: name }, currentPresetState()));
         },
         'Save'
     );
@@ -128,6 +119,7 @@ var init = function(){
   // Inietta emit nei moduli macro e preset (evita circular imports)
   initMacroVars(emit);
   initPresets(emit);
+  initAudioPanel(emit);
   // Richiede la lista macro e preset al server
   emit('get_macros');
   emit('get_presets');

@@ -69,8 +69,19 @@ function _sections() {
             '<li><b>Impulse</b> — each press jumps to a peak and decays back to rest.</li></ul>' +
             '<p>The navbar input monitor shows the last control received; click it on an unmapped control to map it.</p>'],
         ['concepts-presets', 'Presets', 'bookmark',
-            '<p>A preset stores the current channel, macro variable values and transition. Applying it loads the channel in the editor and restores the values; ' +
-            'it does not go live by itself.</p>'],
+            // PRESET RF14: ciclo di vita completo e i due avvisi (preset mancante, canale eliminato)
+            '<p>A preset stores the <b>channel</b> being edited, the <b>macro variable values</b> and the <b>transition</b>.</p>' +
+            '<p><b>Create</b> one with ' + icon('plus') + ' in the Presets panel, or ' + _kbd(SHORTCUTS.palette.keys) + ' → <i>Save preset</i>.</p>' +
+            '<ul><li>' + icon('play') + ' <b>Apply</b> — loads the channel in the editor, restores the variables and <b>sets the transition</b> as the active one. ' +
+                'It does not go live by itself: use Save and Run or Send to live.</li>' +
+            '<li>' + icon('rotate-left') + ' <b>Update</b> — overwrites the preset with the current channel, variables and transition (asks first).</li>' +
+            '<li>' + icon('pen') + ' <b>Rename</b> — edit the name in place: Enter saves, Esc cancels. Actions that use the preset keep working.</li>' +
+            '<li>' + icon('trash') + ' <b>Delete</b> — if actions use it, they are listed before you confirm; their steps stay and are marked <i>missing</i>.</li></ul>' +
+            '<p>Recall a preset from the sidebar, the Presets tab in Mappings, the pads of the Perform view, ' + _kbd(SHORTCUTS.palette.keys) +
+            ', or an <i>Apply preset</i> step in an action (to bind it to a key, a note or a gamepad button).</p>' +
+            '<p>Warnings: ' + icon('triangle-exclamation') + ' <b>Preset not found</b> — an action applies a deleted preset: the other steps still run; ' +
+            'edit the action in Mappings (marked <i>missing</i>). ' + icon('triangle-exclamation') + ' <b>Channel deleted</b> — applying the preset sets only variables and transition: ' +
+            'choose a channel and press Update to fix it.</p>'],
         ['concepts-perform', 'Perform view', 'circle-play',
             '<p>' + _kbd(SHORTCUTS.perform.keys) + ' switches to Perform: big preview, variables as vertical bars, channel pads (click = live) and preset pads. ' +
             'Nothing destructive is reachable from there and tooltips are off.</p>'],
@@ -82,6 +93,18 @@ function _sections() {
             '<li>Allow <b>microphone</b> and <b>camera</b> when asked: <code>a.fft</code> and <code>s0.initCam()</code> use the devices of that PC.</li>' +
             '<li>If the page does not load, allow the app (Node.js) in the <b>Windows firewall</b> on private networks, on the PC running the server.</li></ol>' +
             '<p>The same URLs are printed in the server console at startup.</p>'],
+        // AUDIO: unico testo esteso sul pannello Audio (tooltip e suggerimento del pannello restano brevi)
+        ['audio', 'Audio input', 'volume-high',
+            '<p>Navbar → ' + icon('volume-high') + ' <b>Audio</b> chooses what <code>a.fft</code> listens to, for this mixer and every Live window:</p>' +
+            '<ul><li><b>Off</b> — no input, no permission asked; <code>a.fft</code> stays at zero.</li>' +
+            '<li><b>Mic (default)</b> — the browser default microphone.</li>' +
+            '<li><b>Device</b> — a specific input. Devices marked <i>PC audio</i> are loopback devices that carry what the PC plays: ' +
+            'Stereo Mix / VB-Audio Cable (Windows), BlackHole (macOS, with a Multi-Output Device), Monitor of … (Linux). Best for live: it starts by itself after a reload.</li>' +
+            '<li><b>PC audio</b> — the browser share window: on Windows choose <b>Entire screen</b> and tick <b>Share system audio</b>; elsewhere choose a tab and tick <b>Share tab audio</b>. ' +
+            'Needs a click after every reload (browser rule). Firefox and Safari cannot do it: use a loopback device.</li></ul>' +
+            '<p>The Live windows get the same choice and open it on <b>their own PC</b>. A device missing there, or unplugged, means <b>audio off</b> until a device with the same name comes back; ' +
+            'the navbar audio badge turns red and the panel shows each Live and what to do. With PC audio the Live shows "Click to capture PC audio": click once on that page.</p>' +
+            '<p>The meter shows one bar per <code>a.fft[i]</code> with its value; the dashed line is the cutoff. Bins, cutoff and smoothing are set by the code of each visual (<code>a.setBins(4)</code>, <code>a.setCutoff(2)</code>…).</p>'],
         ['shortcuts', 'Shortcuts', 'keyboard',
             '<table class="guide-table">' + Object.keys(SHORTCUTS).map(function(k) {
                 return '<tr><td>' + _kbd(SHORTCUTS[k].keys) + '</td><td>' + SHORTCUTS[k].label + '</td></tr>';
@@ -101,6 +124,8 @@ function _sections() {
             '<li><b>Syntax error</b> — the red panel under the editor shows it; Save and Run does not go live until the code is fixed.</li>' +
             '<li><b>Server disconnected</b> (red banner) — restart <code>npm start</code>; nothing is saved meanwhile.</li>' +
             '<li><b>Live window is black</b> — send a channel live (Save and Run) after opening it; check the channel works in Preview.</li>' +
+            '<li><b>a.fft does not move</b> — open ' + icon('volume-high') + ' <b>Audio</b>: check the source and the meter; the browser may need one click on the page to start audio.</li>' +
+            '<li><b>Action does nothing</b> — the preset it applies was deleted: look for the <i>missing</i> mark in Mappings.</li>' +
             '<li><b>Paste from the menu does nothing</b> — the browser blocks the clipboard outside localhost: use Ctrl+V.</li></ul>'],
         ['glossary', 'Glossary', 'book',
             '<table class="guide-table">' +

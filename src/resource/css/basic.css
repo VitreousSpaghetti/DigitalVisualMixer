@@ -195,6 +195,7 @@ a.dropdown-item { color: #ababab; }
 .dev-on   { color: #00e676; }
 .dev-none { color: #ff5252; }  /* nessun dispositivo / scollegato a metà */
 .dev-off  { color: #ff9800; }  /* in attesa del permesso, negato o non supportato */
+.dev-idle { color: #888; }     /* AUDIO: Off scelto dall'utente, non è un avviso */
 
 /* ---- Sezioni comprimibili (RF10) ---- */
 .section-head[data-collapse] { cursor: pointer; user-select: none; }
@@ -241,6 +242,23 @@ a.dropdown-item { color: #ababab; }
 .mm-conflict td:first-child::before { content: '\f071'; font-family: 'Font Awesome 6 Free'; font-weight: 900; margin-right: 4px; } /* triangle-exclamation */
 .mm-actions { white-space: nowrap; text-align: right; }
 .mm-empty { color: #666; text-align: center; padding: 12px; }
+.mm-missing, .pr-missing { color: #ffb74d; }
+.mm-missing::before, .pr-missing::before { content: '\f071'; font-family: 'Font Awesome 6 Free'; font-weight: 900; margin-right: 4px; } /* come .mm-conflict */
+.mm-step-err { color: #ff8a80; font-size: 0.8em; margin-left: 6px; }
+/* Righe preset (PRESET RF4): stesse classi in sidebar e tab Presets; nomi lunghi con ellissi (E8) */
+.pr-row { display: flex; justify-content: space-between; align-items: center; gap: 4px; padding: 4px 2px; font-size: 0.82em; color: #ccc; border-bottom: 1px solid #333; }
+.pr-info { flex: 1; min-width: 0; }
+.pr-name { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pr-cell { max-width: 260px; }
+.pr-row .pr-ch { font-size: 0.8em; color: #777; }
+.pr-row .pr-ch.pr-missing { color: #ffb74d; }
+.pr-acts { display: flex; gap: 3px; flex-shrink: 0; justify-content: flex-end; }
+.pr-act { background: none; border: 1px solid #444; border-radius: 3px; color: #ccc; cursor: pointer; padding: 1px 5px !important; }
+.pr-act:hover { background: #333; }
+.pr-apply { color: #aaffaa; border-color: #3a9a3a; background: #1a4a1a; }
+.pr-delete { color: #d77; }
+.pr-rename-input { width: 100%; }
+.pr-empty { color: #666; font-size: 0.8em; padding: 6px 2px; }
 .mm-editor { background: #1a1a2a; border: 1px solid #4a7aaa; padding: 10px; margin-bottom: 10px; }
 .mm-ed-title { font-weight: bold; margin-bottom: 8px; }
 .mm-src { font-family: monospace; color: #ffd54f; min-width: 90px; }
@@ -342,3 +360,20 @@ body.perform-mode .mix > #performPanel { display: block !important; overflow-y: 
 
 /* La regola globale `button` cancellava l'icona X di Bootstrap: la ripristina (svg di Bootstrap 5.0.2) */
 button.btn-close { background: transparent url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23000'%3e%3cpath d='M.293.293a1 1 0 011.414 0L8 6.586 14.293.293a1 1 0 111.414 1.414L9.414 8l6.293 6.293a1 1 0 01-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 01-1.414-1.414L6.586 8 .293 1.707a1 1 0 010-1.414z'/%3e%3c/svg%3e") center/1em auto no-repeat !important; border: 0 !important; }
+
+/* AUDIO (af/AUDIO.md): pannello Audio nel mixer + invito al clic sulla Live */
+.au-sys { font-size: 0.85em; margin-bottom: 10px; }
+.au-hint { color: #aaa; margin-top: 4px; }
+.au-sources { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.au-src { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; color: #ddd !important; font-size: 0.9em !important; }
+.au-src small { color: #777; }
+.au-src select { max-width: 340px; }
+.au-state { font-size: 0.85em; padding: 4px 8px; border-left: 3px solid #555; margin-bottom: 8px; }
+.au-ok { border-color: #00e676; }
+.au-warn { border-color: #ff5252; color: #ff8a80; }
+tr.au-warn td { color: #ff8a80; }
+.au-meter { width: 100%; height: 200px; background: #111; border: 1px solid #333; display: block; }
+.au-h { margin: 12px 0 4px; font-size: 0.9em; }
+.live-audio-tip { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 200; padding: 6px 14px;
+  border-radius: 6px; background: rgba(0,0,0,0.6); color: #fff; font: 14px sans-serif; opacity: 0; pointer-events: none; transition: opacity 0.4s; }
+.live-audio-tip.show { opacity: 1; }

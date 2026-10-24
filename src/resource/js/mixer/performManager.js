@@ -9,7 +9,7 @@
 
 import { getVarKeys, buildVarControl } from './macroVarManager.js';
 import { channelMixer, runChannel } from './mixerManager.js';
-import { getPresetList, applyPresetById } from './presetManager.js';
+import { getPresetList, applyPresetById, presetChannel } from './presetManager.js';
 
 // localStorage può lanciare (modalità privata, storage bloccato): la UI funziona comunque
 function _get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -58,7 +58,8 @@ export function renderPerform() {
         return { label: c.name || String(c.id), live: liveEl && liveEl.id === String(c.id), ch: c.id, run: function() { runChannel(c.id); } };
     }));
     _pads('performPresets', getPresetList().map(function(p) {
-        return { label: p.name || 'Preset #' + p.id, run: function() { applyPresetById(p.id); } };
+        // RF7: canale eliminato → icona di avviso sul pad (in Perform i tooltip sono spenti)
+        return { label: p.name || 'Preset #' + p.id, warn: presetChannel(p).missing, run: function() { applyPresetById(p.id); } };
     }));
 }
 
@@ -69,7 +70,8 @@ function _pads(id, items) {
         var b = document.createElement('button');
         b.className = 'pad' + (it.live ? ' pad-live' : '');
         if (it.ch !== undefined) b.dataset.padCh = it.ch; // showChannelLive sposta pad-live
-        b.textContent = it.label;
+        if (it.warn) b.innerHTML = '<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> ';
+        b.appendChild(document.createTextNode(it.label));
         b.addEventListener('click', it.run);
         box.appendChild(b);
     });

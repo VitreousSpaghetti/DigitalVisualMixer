@@ -163,21 +163,16 @@ export function initializeChannel(variable){
   });
   return firstInitRetrive;
 }
-export function nextRunLive(){
+export function nextRunLive(){ stepLive(1); }
+export function prevRunLive(){ stepLive(-1); }
 
-  channelLive++;
-  if(channelLive >=channelMixer.length){
-    channelLive=0;
-  }
-  runChannel(channelLive);
-}
-export function prevRunLive(){
-  
-  channelLive--;
-  if(channelLive <0){
-    channelLive=channelMixer.length-1;
-  }
-  runChannel(channelLive);
+// channelLive è un id: la navigazione segue l'ordine della griglia (channelMixer), non gli id
+function stepLive(dir){
+  var len = channelMixer.length;
+  if (!len) return;
+  var i = channelMixer.findIndex(function(c) { return c.id == channelLive; });
+  var n = i === -1 ? (dir > 0 ? 0 : len - 1) : (i + dir + len) % len;
+  runChannel(channelMixer[n].id);
 }
 export function load() {
   emit('find_channel', channelSelected);

@@ -41,6 +41,14 @@
 
             <hr style="border-color:#555;">
 
+            <!-- UPDATE_CHECK RF5: versione installata + esito del controllo fatto dal server -->
+            <h4 style="color:#ccc;">Version</h4>
+            <p style="color:#ccc;">Installed version <b id="verInstalled">…</b><br>
+              <span id="verStatus">Checking for updates…</span></p>
+            <button id="verCheck" class="btn btn-sm btn-outline-light">Check for updates</button>
+
+            <hr style="border-color:#555;">
+
             <h4 style="color:#ccc;">Architecture</h4>
             <pre style="color:#9c9;font-size:0.8em;background:#111;padding:10px;border-radius:4px;">
 Browser (Mixer :8080/)          Browser (/live)
@@ -72,6 +80,36 @@ Browser (Mixer :8080/)          Browser (/live)
             </ul>
           </div>
         </div>
+        <script>
+          // UPDATE_CHECK RF5: lo stato arriva dal server (un controllo condiviso), qui solo resa
+          function showVersion(s) {
+            document.getElementById('verInstalled').textContent = s.installed;
+            var el = document.getElementById('verStatus');
+            if (s.status === 'available') {
+              el.textContent = 'Version ' + s.latest + ' is available: ';
+              var a = document.createElement('a');
+              a.href = s.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'download';
+              el.appendChild(a);
+            } else {
+              el.textContent = s.status === 'up-to-date' ? 'Up to date.'
+                             : s.status === 'error' ? 'Unable to check for updates.' : 'Checking for updates…';
+            }
+          }
+          fetch('/api/version').then(function(r) { return r.json(); }).then(function(s) {
+            showVersion(s);
+            // Pagina aperta prima della fine del controllo all'avvio: chiede l'esito (dedup lato server)
+            if (s.status === 'checking') return fetch('/api/version/check', { method: 'POST' }).then(function(r) { return r.json(); }).then(showVersion);
+          });
+          document.getElementById('verCheck').addEventListener('click', function() {
+            var btn = this;
+            btn.disabled = true; // E7: un controllo per volta anche lato UI
+            document.getElementById('verStatus').textContent = 'Checking for updates…';
+            fetch('/api/version/check', { method: 'POST' }).then(function(r) { return r.json(); })
+              .then(showVersion)
+              .catch(function() { document.getElementById('verStatus').textContent = 'Unable to check for updates.'; })
+              .finally(function() { btn.disabled = false; });
+          });
+        </script>
         <div id="hydra-ui" style="    z-index: -100;">
             <div style="width:100%;height:100%;">
                 <canvas id="hydra-canvas" style="imageRendering:pixelated; width:100%;height:100%;aspect-ratio: auto 1920 / 929;"> </canvas>

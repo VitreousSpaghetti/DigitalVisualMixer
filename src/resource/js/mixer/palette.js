@@ -7,7 +7,7 @@
  */
 
 import { channelMixer, runChannel, selectChannelClick } from './mixerManager.js';
-import { getPresetList, applyPresetById } from './presetManager.js';
+import { getPresetList, applyPresetById, presetChannel } from './presetManager.js';
 import { hydraCategories } from './menuFunctionManager.js';
 import { insertText } from './rollupBundle/codeMirrorManager.js';
 import { openGuide } from './guideManager.js';
@@ -30,6 +30,7 @@ function _items() {
         { label: 'Open Live window', icon: 'up-right-from-square', run: function() { window.openLiveWindow(); } },
         { label: 'Perform / Edit view', icon: 'circle-play', hint: sc('perform'), run: function() { togglePerform(); } },
         { label: 'Mappings manager', icon: 'sliders', run: _act('openMacroManager') },
+        { label: 'Audio input', icon: 'volume-high', run: _act('openAudio') },
         { label: 'New channel', icon: 'plus', run: _act('addChannel') },
         { label: 'Save preset', icon: 'bookmark', run: _act('addPreset') },
         { label: 'Guide', icon: 'circle-question', hint: sc('guide'), run: function() { openGuide(); } }
@@ -40,7 +41,9 @@ function _items() {
         items.push({ label: 'Go live: ' + n, icon: 'tower-broadcast', run: function() { runChannel(c.id); } });
     });
     getPresetList().forEach(function(p) {
-        items.push({ label: 'Apply preset: ' + (p.name || p.id), icon: 'bookmark', run: function() { applyPresetById(p.id); } });
+        var missing = presetChannel(p).missing; // RF7: il preset si applica comunque (solo variabili e transizione)
+        items.push({ label: 'Apply preset: ' + (p.name || p.id) + (missing ? ' (channel deleted)' : ''), icon: missing ? 'triangle-exclamation' : 'bookmark',
+            run: function() { applyPresetById(p.id); } });
     });
     hydraCategories().forEach(function(cat) {
         cat.data.forEach(function(fn) {

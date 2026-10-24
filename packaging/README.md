@@ -44,6 +44,11 @@ Same `pkg.assets` list and same `../src` as Windows.
 - `gh release upload --clobber`: attaches the files with fixed names, replacing existing ones.
   No secrets: only the workflow's own token (`contents: write`).
 
+**Versioning (update check):** the app compares its `package.json` version with the latest GitHub
+Release (`/releases/latest`, drafts and pre-releases ignored) and shows a "new version" notice in the
+mixer and in `/about`. So for every release: bump `"version"` in the root `package.json` first, then
+publish a GitHub **Release** (not just a tag) named `vX.Y.Z` with the same number.
+
 ## How it works
 
 - `launcher.js` (entry point): sets `DATA_DIR` (Windows: `data\` next to the exe; macOS:

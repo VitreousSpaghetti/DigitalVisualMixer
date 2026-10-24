@@ -9,9 +9,10 @@ import {
 import { showToast } from "./toastManager.js";
 import { setMacroList, setMacroVars } from "./macroVarManager.js";
 import { renderActionPanel } from "./macroManager.js";
-import { setPresetList } from "./presetManager.js";
+import { setPresetList, renderPresetPanel } from "./presetManager.js";
 import { refreshMappingPanel } from "./mappingPanel.js";
 import { renderPerform } from "./performManager.js";
+import { setAudioChoice, setLiveAudio } from "./audioPanel.js";
 var socket = io();
 
 // TODO-6.2: Mostra/nasconde banner disconnessione
@@ -22,6 +23,15 @@ socket.on('disconnect', () => {
 socket.on('connect', () => {
     var b = document.getElementById('disconnectBanner');
     if (b) b.style.display = 'none';
+});
+
+// UPDATE_CHECK RF4/E5: un solo toast per versione nella sessione del browser (riconnessioni e
+// ricarichi del mixer non lo ripetono). sessionStorage può mancare/lanciare: allora si mostra e basta.
+socket.on('update_status', function(s) {
+    if (!s || s.status !== 'available') return;
+    var key = 'dvm-update-toast-' + s.latest;
+    try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, '1'); } catch (e) {}
+    showToast('Version ' + s.latest + ' is available', 'info', { text: 'Download', href: s.url });
 });
 
 //RETRIVE CHANNEL IN LIVE
@@ -74,9 +84,17 @@ socket.on('get_all', function (variable) {
     initializeChannel(variable).then(data => {
         autosave();
         emit('get_in_load');
-        renderPerform(); // pad Canali
+        onChannels();
     })
 });
+
+// Lista canali cambiata: pad Canali di Perform e liste preset, che mostrano il nome del canale
+// e il segno "canale eliminato" (PRESET RF7/RF12)
+function onChannels() {
+    renderPerform();
+    renderPresetPanel();
+    refreshMappingPanel();
+}
 
 // Risposta a 'create_channel': ricarica la griglia canali e seleziona il nuovo canale.
 // Non usa il percorso socket 'get_all' per evitare il side effect autosave() toggle
@@ -84,6 +102,7 @@ socket.on('get_all', function (variable) {
 socket.on('channel_created', function(data) {
     initializeChannel(data.channels).then(function() {
         selectChannelLoad(data.id);
+        onChannels();
     });
 });
 
@@ -93,6 +112,7 @@ socket.on('channel_deleted', function(data) {
     initializeChannel(data.channels).then(function() {
         var nextChannel = data.channels[0]; // primo canale disponibile dopo la cancellazione
         selectChannelLoad(nextChannel.id, true); // skipSave: il canale eliminato non va risalvato
+        onChannels();
     });
 });
 
@@ -113,6 +133,10 @@ function onMacros(macros) {
     renderPerform();
 }
 socket.on('get_macros', onMacros);
+// AUDIO: scelta salvata (alla connessione) o cambiata da un altro mixer → aperta su questo PC (RF8/RF9)
+socket.on('get_audio', setAudioChoice);
+// AUDIO RF11: sorgente effettiva di ogni Live connessa
+socket.on('audio_lives', setLiveAudio);
 socket.on('macro_created', function(data) { onMacros(data.macros); });
 socket.on('macro_deleted', function(data) { onMacros(data.macros); });
 

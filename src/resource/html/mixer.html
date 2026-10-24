@@ -11,6 +11,8 @@
 
 
   <script src="/dist/hydra-synth.js"></script>
+  <!-- AUDIO: sorgente di a.fft (condiviso con live.html), deve girare prima che hydraManager crei Hydra -->
+  <script src="./src/resource/js/audioInput.js"></script>
   <script src="/socket.io/socket.io.js"></script>
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
@@ -116,6 +118,10 @@
                 <li class="nav-item">
                   <a class="nav-link" href="#" onclick="selectActionExec('openMacroManager')" data-tip="Mappings manager: connect MIDI, gamepad and keyboard to variables and actions"><i class="fa-solid fa-sliders" aria-hidden="true"></i> Mappings</a>
                 </li>
+                <!-- AUDIO RF1: sorgente audio di a.fft per mixer e Live (audioPanel.js) -->
+                <li class="nav-item">
+                  <a class="nav-link" href="#" onclick="selectActionExec('openAudio')" data-tip="Audio input: choose what a.fft listens to (microphone, a device, the PC audio, off)"><i class="fa-solid fa-volume-high" aria-hidden="true"></i> Audio</a>
+                </li>
                 <!-- UX_GUIDA E2: Guida, shortcut, docs e About in un unico menu ? -->
                 <li class="nav-item dropdown">
                   <a class="nav-link dropdown-toggle" href="#" id="navbarHelpLink" role="button"
@@ -142,6 +148,8 @@
             <!-- PERFORM RF5: stato dispositivi (tooltip = elenco); MIDI negato → click per riattivare -->
             <span id="midiStatus" class="dev-status dev-off" aria-label="MIDI"><i class="fa-solid fa-music" aria-hidden="true"></i> …</span>
             <span id="padStatus" class="dev-status dev-off" aria-label="Gamepad"><i class="fa-solid fa-gamepad" aria-hidden="true"></i> …</span>
+            <!-- AUDIO RF6/RF11: sorgente audio e stato; avviso se questa pagina o una Live ha un problema; click = pannello -->
+            <span id="audioStatus" class="dev-status dev-idle" role="button" aria-label="Audio"><i class="fa-solid fa-volume-high" aria-hidden="true"></i> …</span>
             <!-- Badge canale live - TODO-1.1 -->
             <span id="liveBadge" class="live-badge ms-auto" data-tip="Channel currently on the live output"><i class="fa-solid fa-circle" aria-hidden="true"></i> LIVE: <span class="live-name">—</span></span>
             <!-- Indicatore autosave - TODO-1.3 -->
@@ -252,7 +260,7 @@
             <div id="macroActionsList" style="padding:2px 8px;"></div>
           </div>
 
-          <!-- Preset Panel — visibile solo se esistono preset nel DB; generato da presetManager.js -->
+          <!-- Preset Panel — sempre visibile, anche vuoto, così il + resta raggiungibile (PRESET RF5); righe da presetManager.js -->
           <div class="multychannel" id="presetPanel" style=";padding:4px 0;">
             <div class="row spacingRow align-items-center section-head" data-collapse="presetList" data-tip="Collapse / expand">
               <div class="col" style="text-align:left;"><i class="fa-solid fa-bookmark" aria-hidden="true"></i> Presets
@@ -263,7 +271,7 @@
                   onclick="selectActionExec('addPreset')" data-tip="Save the current state (channel, variables, transition) as a preset" aria-label="Save preset"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>
               </div>
             </div>
-            <!-- Lista preset generata dinamicamente da presetManager.js → renderPresetPanel() -->
+            <!-- Lista preset generata da presetManager.js → renderPresetPanel() (stesse righe/azioni del tab Presets) -->
             <div id="presetList" style="padding:2px 8px;"></div>
           </div>
 

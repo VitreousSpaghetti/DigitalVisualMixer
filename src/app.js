@@ -6,11 +6,12 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 // DB_PATH da manager.js: export/import devono operare sullo stesso file del DB (anche con DATA_DIR)
-import { DATA_DIR, DB_PATH, searchChannel, saveChannel, getAll, getTransition, setTransition, reorderChannels, reloadDb, createChannel, deleteChannel, getAllMacros, saveMacro, createMacro, deleteMacro, getPresets, createPreset, deletePreset, updatePreset }  from './manager.js'
+import { DATA_DIR, DB_PATH, searchChannel, saveChannel, getAll, getTransition, setTransition, reorderChannels, reloadDb, createChannel, deleteChannel, getAllMacros, saveMacro, createMacro, deleteMacro, getPresets, createPreset, deletePreset, updatePreset, getAudio, setAudio }  from './manager.js'
 import { createServer } from "http";
 import { createServer as createHttpsServer } from "https";
 import { Server } from "socket.io";
 import { lanIPv4, loadOrCreateCert } from './cert.js';
+import { createUpdateChecker } from './updateCheck.js';
 
 //INIT ENV VAR
 const app = express();
@@ -145,6 +146,17 @@ function liveUrls() {
 }
 app.get('/api/lan', (req, res) => res.json({ live: liveUrls() }));
 
+// UPDATE_CHECK: versione da package.json (asset del binario). L'esito va a tutte le finestre via
+// socket (E4: un mixer aperto prima della fine del controllo riceve il toast senza ricaricare).
+// La Live ignora 'update_status' (RF7: niente avvisi sul proiettore).
+const updates = createUpdateChecker(p('package.json'), function(s) {
+    if (s.status === 'available') console.log('New version available: ' + s.latest + ' — ' + s.url); // RF6
+    else if (s.status === 'error') console.log('Update check skipped (' + s.error + ')'); // UC3: offline, solo info
+    io.emit('update_status', s);
+});
+app.get('/api/version', (req, res) => res.json(updates.get()));
+app.post('/api/version/check', async (req, res) => res.json(await updates.check())); // RF5: pulsante About
+
 // --- REST API: export / import DB ---
 
 /**
@@ -186,6 +198,12 @@ var toload = true; //default
 // Ultimo valore noto di ogni variabile macro {key: value} (PERFORM edge case: /live aperta
 // tardi o mixer ricaricato devono ripartire dai valori correnti, non dai default)
 var macroState = {};
+// AUDIO RF11: sorgente audio effettiva di ogni Live connessa {socketId: stato}; il mixer non può
+// aprire dispositivi sul PC della Live, può solo mostrarne lo stato
+var liveAudio = {};
+function audioLives() {
+    return Object.keys(liveAudio).map(function(id) { return Object.assign({ id: id }, liveAudio[id]); });
+}
 
 // handle incoming connections from clients
 io.sockets.on('connection', async function(socket) {
@@ -209,6 +227,8 @@ io.sockets.on('connection', async function(socket) {
     if (currentChannel) socket.emit("get_channel", currentChannel);
 
     socket.emit("get_toload", toload);
+    // UPDATE_CHECK: esito già pronto → subito; altrimenti arriva col broadcast di fine controllo
+    if (updates.get().status !== 'checking') socket.emit('update_status', updates.get());
 
     //set the channel in charge
     socket.on('set_channel', async function(variable) {
@@ -234,6 +254,32 @@ io.sockets.on('connection', async function(socket) {
     socket.on('save_transition', async function(variable) {
         console.log("app: save_transition " + variable.type + " " + variable.duration + "ms");
         await setTransition(variable);
+    });
+
+    // --- AUDIO (af/AUDIO.md) ---
+    // Scelta salvata e stato delle Live alla connessione: una Live tardiva applica la scelta corrente (RF8)
+    socket.emit('get_audio', await getAudio());
+    socket.emit('audio_lives', audioLives());
+
+    // Il mixer cambia sorgente: salva (RF9) e la manda a Live e altri mixer, che la aprono sul proprio PC
+    socket.on('set_audio', async function(variable) {
+        console.log("app: set_audio " + (variable && variable.type));
+        socket.broadcast.emit('get_audio', await setAudio(variable));
+    });
+
+    // Stato della sorgente sulla Live (solo live.js lo invia); campi copiati uno a uno: arrivano dalla rete
+    socket.on('audio_status', function(st) {
+        st = st || {};
+        liveAudio[socket.id] = { type: String(st.type || ''), label: String(st.label || '').slice(0, 200),
+            status: String(st.status || ''), text: String(st.text || ''), warn: !!st.warn };
+        io.emit('audio_lives', audioLives());
+    });
+
+    // Live chiusa: sparisce dal pannello e il suo eventuale avviso si spegne (RF11)
+    socket.on('disconnect', function() {
+        if (!liveAudio[socket.id]) return;
+        delete liveAudio[socket.id];
+        io.emit('audio_lives', audioLives());
     });
 
     //return channel in live
@@ -369,28 +415,29 @@ io.sockets.on('connection', async function(socket) {
         socket.emit('get_presets', await getPresets());
     });
 
-    // Crea un nuovo preset; notifica solo il client richiedente
+    // Crea un nuovo preset. PRESET RF13: le risposte preset vanno a tutti (io.emit), così ogni
+    // finestra mixer aperta ha la lista aggiornata; il dato è lo stesso per tutti i client
     socket.on('create_preset', async function (data) {
         console.log("app: create_preset nome=" + data.name);
         var newId = await createPreset(data);
         var allPresets = await getPresets();
-        socket.emit('preset_created', { id: newId, presets: allPresets });
+        io.emit('preset_created', { id: newId, presets: allPresets });
     });
 
-    // Elimina un preset per id; notifica solo il client richiedente
+    // Elimina un preset per id; notifica tutti i client (RF13)
     socket.on('delete_preset', async function (presetId) {
         console.log("app: delete_preset id=" + presetId);
         await deletePreset(presetId);
         var allPresets = await getPresets();
-        socket.emit('preset_deleted', { deletedId: presetId, presets: allPresets });
+        io.emit('preset_deleted', { deletedId: presetId, presets: allPresets });
     });
 
-    // Aggiorna un preset esistente (nome, channelId, macroVars, transition); notifica solo il richiedente
+    // Aggiorna un preset esistente (nome, channelId, macroVars, transition); notifica tutti i client (RF13)
     socket.on('update_preset', async function (data) {
         console.log("app: update_preset id=" + data.id);
         await updatePreset(data.id, data);
         var allPresets = await getPresets();
-        socket.emit('preset_updated', { updatedId: data.id, presets: allPresets });
+        io.emit('preset_updated', { updatedId: data.id, presets: allPresets });
     });
 
 });  
@@ -406,6 +453,8 @@ http.listen(port, () => {
     https.on('error', (e) => { console.warn('WARNING: HTTPS port ' + httpsPort + ' unavailable (' + e.code + '), running HTTP only.'); printUrls(); });
     https.listen(httpsPort, printUrls);
 });
+// RNF1: dopo listen e senza await, il controllo non ritarda né server né apertura del browser
+updates.check();
 
 
 /*
