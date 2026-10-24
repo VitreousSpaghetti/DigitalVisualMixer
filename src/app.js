@@ -262,9 +262,12 @@ io.sockets.on('connection', async function(socket) {
     socket.emit('audio_lives', audioLives());
 
     // Il mixer cambia sorgente: salva (RF9) e la manda a Live e altri mixer, che la aprono sul proprio PC
+    // AUDIO_PARAMS: durante il trascinamento di uno slider arriva final:false → si inoltra senza scrivere
+    // db.json; il valore finale (change) ha final:true e viene salvato (NFR §3)
     socket.on('set_audio', async function(variable) {
-        console.log("app: set_audio " + (variable && variable.type));
-        socket.broadcast.emit('get_audio', await setAudio(variable));
+        var persist = !(variable && variable.final === false);
+        if (persist) console.log("app: set_audio " + (variable && variable.type));
+        socket.broadcast.emit('get_audio', await setAudio(variable, persist));
     });
 
     // Stato della sorgente sulla Live (solo live.js lo invia); campi copiati uno a uno: arrivano dalla rete

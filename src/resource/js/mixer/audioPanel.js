@@ -5,16 +5,23 @@
  * window.DVMAudio (audioInput.js, condiviso con la Live), la salva (set_audio → DB + Live) e mostra:
  * sistema rilevato con suggerimento (RF2), meter FFT grande (RF7), stato di ogni Live (RF11).
  * L'indicatore #audioStatus in navbar va in avviso se la sorgente locale o una Live ha un problema.
- * I parametri di `a` (bins, cutoff…) restano al codice Hydra di ogni visual (D4): qui solo la sorgente.
+ * Sezione "Audio analysis" (af/AUDIO_PARAMS.md, rivede D4): override opzionale di scale/cutoff/smooth/bins
+ * per preview e Live; spento, i parametri di `a` restano al codice di ogni visual.
  */
 
 import { showToast } from './toastManager.js';
 import { icon } from './uiHelp.js';
 
 var _emit = null;
+var _reload = null;
 var _modal = null;
 var _lives = [];
 var _raf = 0;
+var _tmr = 0, _pending = false;
+
+// RF2: [chiave, etichetta, min, max, passo] — stessi intervalli che il server impone (manager.js, E8)
+var PARAMS = [['scale', 'Scale', 0.1, 30, 0.1], ['cutoff', 'Cutoff', 0, 10, 0.1],
+    ['smooth', 'Smooth', 0, 0.99, 0.01], ['bins', 'Bins', 1, 16, 1]];
 
 function $(id) { return document.getElementById(id); }
 
@@ -43,9 +50,13 @@ function _system() {
     return { os: os, br: br, canCapture: canCapture, hint: hint };
 }
 
-/** @param {Function} emitFn - emit di mixerEmitter (iniettato: niente import circolari) */
-export function initAudioPanel(emitFn) {
+/**
+ * @param {Function} emitFn   - emit di mixerEmitter (iniettato: niente import circolari)
+ * @param {Function} reloadFn - riesegue in preview il canale salvato (override spento, RF6)
+ */
+export function initAudioPanel(emitFn, reloadFn) {
     _emit = emitFn;
+    _reload = reloadFn;
     DVMAudio.onChange(function(st, ev) {
         // E3b: audioInput.js passa ogni evento una sola volta per scelta, qui niente filtri
         if (ev === 'disconnected') showToast('Device disconnected: ' + st.label + ' — audio off', 'error');
@@ -62,6 +73,10 @@ export function initAudioPanel(emitFn) {
 /** Scelta salvata (get_audio alla connessione) o cambiata da un altro mixer: si apre su questo PC */
 export function setAudioChoice(choice) {
     DVMAudio.apply(choice, false);
+    // E7: anche l'override arriva dagli altri mixer; spento altrove → anche questa preview riprende i valori del visual
+    if (DVMAudio.setParams(choice) && _reload) _reload();
+    _indicator();
+    _renderParams();
 }
 
 /** Stato delle Live connesse (audio_lives) */
@@ -79,11 +94,15 @@ function _indicator() {
     var liveWarn = _lives.some(function(l) { return l.warn; });
     var short = st.type === 'off' ? 'Off' : st.type === 'system' ? 'PC' : st.type === 'default' ? 'Mic'
         : st.label.length > 14 ? st.label.slice(0, 13) + '…' : st.label;
+    var ovr = DVMAudio.params().override;
     el.className = 'dev-status ' + (st.warn || liveWarn ? 'dev-none' : st.status === 'active' ? 'dev-on' : 'dev-idle');
     el.innerHTML = icon(st.warn || liveWarn ? 'triangle-exclamation' : 'volume-high') + ' ';
     el.appendChild(document.createTextNode(short));
-    el.setAttribute('aria-label', 'Audio: ' + st.label + ', ' + st.text);
-    el.dataset.tip = 'Audio: ' + st.label + ' — ' + st.text + (liveWarn ? '\nAudio problem on a Live' : '') + '\nClick to open the Audio panel';
+    // RF8: si vede perché un visual non reagisce come scritto nel suo codice
+    if (ovr) el.insertAdjacentHTML('beforeend', ' <span class="au-ovr">OVR</span>');
+    el.setAttribute('aria-label', 'Audio: ' + st.label + ', ' + st.text + (ovr ? ', override on' : ''));
+    el.dataset.tip = 'Audio: ' + st.label + ' — ' + st.text + (liveWarn ? '\nAudio problem on a Live' : '') +
+        (ovr ? '\nAudio override on: visuals use panel values' : '') + '\nClick to open the Audio panel';
 }
 
 export function openAudioPanel() {
@@ -111,6 +130,17 @@ export function openAudioPanel() {
                         : _esc(sys.br) + ' cannot capture PC audio: pick a loopback device') + '">' + icon('share-from-square') + ' Capture PC audio</button></label>' +
             '</div>' +
             '<div id="auState" class="au-state"></div>' +
+            '<h6 class="au-h">' + icon('sliders') + ' Audio analysis</h6>' +
+            '<div class="au-ovr-row">' +
+                '<label class="au-src" data-tip="When on, these values replace the a.setScale / setCutoff / setSmooth / setBins written in the visuals, on the preview and on every Live">' +
+                    '<input type="checkbox" id="auOverride"> Override visual settings</label>' +
+                '<button id="auReset" class="mm-btn" data-tip="Reset Scale, Cutoff, Smooth and Bins to defaults">' + icon('rotate-left') + ' Reset to defaults</button>' +
+            '</div>' +
+            '<div class="au-params">' + PARAMS.map(function(p) {
+                var at = ' data-p="' + p[0] + '" min="' + p[2] + '" max="' + p[3] + '" step="' + p[4] + '" aria-label="' + p[1] + '"';
+                return '<label>' + p[1] + '</label><input type="range"' + at + '><input type="number" class="mm-input"' + at + '>' +
+                    (p[0] === 'bins' ? '<small class="au-note">' + icon('triangle-exclamation') + ' Visuals reading a.fft[i] with i ≥ Bins get no value</small>' : '');
+            }).join('') + '</div>' +
             '<canvas id="auMeter" class="au-meter" height="200" aria-label="Audio levels per bin"></canvas>' +
             '<h6 class="au-h">' + icon('display') + ' Live</h6><div id="auLives"></div>' +
         '</div></div></div></div>');
@@ -121,10 +151,17 @@ export function openAudioPanel() {
         // non attivano il radio (contenuto interattivo), quindi niente doppia richiesta
         if (e.target.name === 'auType') _choose(e.target.value);
         if (e.target.id === 'auDevice') _choose('device');
+        if (e.target.id === 'auOverride') _override(e.target.checked);
+        // change = fine trascinamento / campo confermato: valore definitivo, salvato nel DB
+        if (e.target.dataset.p) _param(e.target, true);
+    });
+    _modal.addEventListener('input', function(e) {
+        if (e.target.dataset.p) _param(e.target, false);
     });
     _modal.addEventListener('click', function(e) {
         var b = e.target.closest('button');
         if (!b) return;
+        if (b.id === 'auReset') { DVMAudio.setParams(DVMAudio.DEFAULTS); _sendParams(true); _renderParams(); }
         if (b.id === 'auRefresh') _renderDevices();
         if (b.id === 'auUnlock') DVMAudio.unlock().then(_renderDevices, function() { showToast('Microphone permission denied', 'error'); });
         // Clic diretto: getDisplayMedia esige il gesto dell'utente (RF4)
@@ -139,7 +176,54 @@ export function openAudioPanel() {
     _renderDevices();
     _renderState();
     _renderLives();
+    _renderParams();
     _meter();
+}
+
+// Accensione: basta applicare i valori (RF4). Spegnimento: preview riesegue il canale salvato (RF6),
+// le Live lo fanno da sole ricevendo override:false
+function _override(on) {
+    if (DVMAudio.setParams({ override: on }) && _reload) _reload();
+    _sendParams(true);
+    _renderParams();
+}
+
+// Valore non valido nel campo numerico: si ignora mentre si scrive, alla conferma torna all'ultimo valido (RF2)
+function _param(el, final) {
+    var p = PARAMS.find(function(x) { return x[0] === el.dataset.p; });
+    var v = Number(el.value);
+    if (el.value === '' || !isFinite(v) || v < p[2] || v > p[3]) { if (final) _renderParams(); return; }
+    var patch = {};
+    patch[p[0]] = p[0] === 'bins' ? Math.round(v) : v;
+    DVMAudio.setParams(patch);
+    _sendParams(final);
+    _renderParams(final ? null : el); // non si riscrive il campo che l'utente sta modificando
+}
+
+// NFR: al massimo un invio ogni 50 ms durante il trascinamento, l'ultimo valore parte sempre;
+// final:true (change, switch, reset) salva nel DB. Solo i parametri: il server li unisce alla sorgente salvata
+function _sendParams(final) {
+    if (final) {
+        clearTimeout(_tmr); _tmr = 0; _pending = false;
+        _emit('set_audio', Object.assign(DVMAudio.params(), { final: true }));
+    } else if (_tmr) {
+        _pending = true;
+    } else {
+        _emit('set_audio', Object.assign(DVMAudio.params(), { final: false }));
+        _tmr = setTimeout(function() { _tmr = 0; if (_pending) { _pending = false; _sendParams(false); } }, 50);
+    }
+    _indicator();
+}
+
+function _renderParams(skip) {
+    if (!_modal) return;
+    var p = DVMAudio.params();
+    $('auOverride').checked = p.override;
+    // RF1: visibili ma disabilitati con override spento; il reset resta attivo (RF3b)
+    _modal.querySelectorAll('[data-p]').forEach(function(i) {
+        i.disabled = !p.override;
+        if (i !== skip) i.value = p[i.dataset.p];
+    });
 }
 
 // Scelta dell'utente: si applica (con il gesto) e si salva; se non si applica (E1, finestra annullata) resta la precedente

@@ -209,6 +209,9 @@ socket.on('set_toload', function(variable) {
 // lo stato effettivo torna al mixer (RF11) a ogni cambio, anche dopo una riconnessione del socket
 socket.on('get_audio', function(choice) {
     DVMAudio.apply(choice, false);
+    // AUDIO_PARAMS RF6: override appena spento → si riesegue il canale in onda (taglio netto) e il
+    // visual riprende i propri a.set*(); senza canale non c'è niente da rieseguire (E11)
+    if (DVMAudio.setParams(choice) && channel) loadCode(channel.code);
 });
 
 var audioTip = null, audioTipTimer = null;

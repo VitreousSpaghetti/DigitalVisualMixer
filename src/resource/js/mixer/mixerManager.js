@@ -397,6 +397,16 @@ function isDirty() {
     return _savedCode !== null && getDoc() !== _savedCode;
 }
 
+/**
+ * AUDIO_PARAMS RF6/E10: override audio spento → si riesegue in preview il canale SALVATO, così il
+ * visual riprende i propri a.set*(). Non passa da load(): find_channel riscriverebbe l'editor.
+ */
+export function reloadSavedPreview() {
+    if (_savedCode === null) { prev(); return; }
+    if (isDirty()) showToast('Preview reloaded from saved channel', 'info');
+    refreshHydra(processMacroVars(_savedCode));
+}
+
 function _paintDirty() {
     var m = document.getElementById('dirtyMark');
     if (m) m.hidden = !isDirty();

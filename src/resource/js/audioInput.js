@@ -15,6 +15,8 @@
  *  - devices()  → Promise<{hidden, list: [{label, loopback}]}>; hidden = nomi nascosti finché non c'è il permesso
  *  - unlock()   → chiede il permesso del mic solo per leggere i nomi dei dispositivi
  *  - onChange(fn) → fn(state, event); event = 'disconnected'|'reconnected'|'stopped'|'devices'|null
+ *  - params() / setParams(p) / DEFAULTS → override di scale/cutoff/smooth/bins (af/AUDIO_PARAMS.md);
+ *    setParams ritorna true se l'override si è appena spento (va rieseguito il codice in onda)
  */
 (function () {
     var md = navigator.mediaDevices;
@@ -29,6 +31,11 @@
     var wasActive = false;   // la scelta corrente è già stata attiva: assente = "disconnected", mai trovata = "notfound"
     var notified = {};       // E3b: un solo avviso per evento finché l'utente non cambia scelta
     var listeners = [];
+
+    // AUDIO_PARAMS: default = quelli di resetAudioAndSpeed(); usati anche da un DB senza i campi (RF3, RF7)
+    var DEFAULTS = { scale: 10, cutoff: 3, smooth: 0.8, bins: 6 };
+    var params = Object.assign({ override: false }, DEFAULTS);
+    var raw = null;          // setter originali di `a`, salvati quando `a` esiste
 
     var gum = md && md.getUserMedia ? md.getUserMedia.bind(md) : null;
     if (gum) {
@@ -56,6 +63,12 @@
             res();
         }, 50);
     });
+    // Poll a parte: i setter di `a` esistono anche senza getUserMedia (Live in HTTP), E5
+    var hookT = setInterval(function () {
+        if (!window.a || !a.setBins) return;
+        clearInterval(hookT);
+        hookParams();
+    }, 50);
 
     // Chrome avvia l'AudioContext solo dopo un gesto: il primo clic/tasto sulla pagina lo sblocca
     ['pointerdown', 'keydown'].forEach(function (ev) {
@@ -63,6 +76,36 @@
     });
     function resumeCtx() {
         if (window.a && a.context && a.context.state === 'suspended') a.context.resume().catch(function () {});
+    }
+
+    // AUDIO_PARAMS RF5: invece di accodare a.set*() a ogni codice eseguito (preview, transizioni,
+    // preset, Live…) si avvolgono i setter una volta sola: con override acceso le chiamate dei visual
+    // (anche da macro, a ogni frame o in un codice andato in errore: E2, E4) non hanno effetto.
+    function hookParams() {
+        raw = {};
+        ['Scale', 'Cutoff', 'Smooth', 'Bins'].forEach(function (n) {
+            raw[n] = a['set' + n].bind(a);
+            a['set' + n] = function (v) { if (!params.override) raw[n](v); };
+        });
+        applyParams();
+    }
+
+    function applyParams() {
+        if (!raw || !params.override) return;
+        // setBins ricrea fft/settings: solo se cambia, così lo smoothing non riparte a ogni slider
+        if (a.bins.length !== params.bins) raw.Bins(params.bins);
+        raw.Scale(params.scale);
+        raw.Cutoff(params.cutoff);
+        raw.Smooth(params.smooth);
+    }
+
+    // Ritorna true se l'override si è appena spento: il chiamante riesegue il codice in onda (RF6)
+    function setParams(p) {
+        var was = params.override;
+        Object.keys(params).forEach(function (k) { if (p && p[k] !== undefined) params[k] = p[k]; });
+        // Niente emit(): sulla Live farebbe partire audio_status a ogni movimento di slider
+        applyParams();
+        return was && !params.override;
     }
 
     function stop(s) { s.getTracks().forEach(function (t) { t.onended = null; t.stop(); }); }
@@ -208,6 +251,9 @@
             });
         },
         unlock: function () { return gum ? unlock() : Promise.reject(new Error('unsupported')); },
-        onChange: function (fn) { listeners.push(fn); }
+        onChange: function (fn) { listeners.push(fn); },
+        DEFAULTS: DEFAULTS,
+        params: function () { return Object.assign({}, params); },
+        setParams: setParams
     };
 })();

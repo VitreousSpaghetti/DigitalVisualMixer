@@ -1,5 +1,5 @@
 
-import { run,prev,save,saveAndRun,load,setLoadprev,selectChannelLoad,selectChannelClick,autosave,initMixer,nextRunLive,prevRunLive, addChannel, deleteCurrentChannel, channelMixer, runChannel} from "./mixerManager.js";
+import { run,prev,save,saveAndRun,load,setLoadprev,selectChannelLoad,selectChannelClick,autosave,initMixer,nextRunLive,prevRunLive, addChannel, deleteCurrentChannel, channelMixer, runChannel, reloadSavedPreview} from "./mixerManager.js";
 import { initMirror } from "./rollupBundle/codeMirrorManager.js";
 import { initMacro } from "./macroManager.js";
 import { initNav } from "./navManager.js";
@@ -119,7 +119,7 @@ var init = function(){
   // Inietta emit nei moduli macro e preset (evita circular imports)
   initMacroVars(emit);
   initPresets(emit);
-  initAudioPanel(emit);
+  initAudioPanel(emit, reloadSavedPreview);
   // Richiede la lista macro e preset al server
   emit('get_macros');
   emit('get_presets');

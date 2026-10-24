@@ -104,7 +104,13 @@ function _sections() {
             'Needs a click after every reload (browser rule). Firefox and Safari cannot do it: use a loopback device.</li></ul>' +
             '<p>The Live windows get the same choice and open it on <b>their own PC</b>. A device missing there, or unplugged, means <b>audio off</b> until a device with the same name comes back; ' +
             'the navbar audio badge turns red and the panel shows each Live and what to do. With PC audio the Live shows "Click to capture PC audio": click once on that page.</p>' +
-            '<p>The meter shows one bar per <code>a.fft[i]</code> with its value; the dashed line is the cutoff. Bins, cutoff and smoothing are set by the code of each visual (<code>a.setBins(4)</code>, <code>a.setCutoff(2)</code>…).</p>'],
+            '<p>The meter shows one bar per <code>a.fft[i]</code> with its value; the dashed line is the cutoff. Bins, cutoff and smoothing are set by the code of each visual (<code>a.setBins(4)</code>, <code>a.setCutoff(2)</code>…).</p>' +
+            // AUDIO_PARAMS RF10: override, reset e i due limiti noti (E1, E2)
+            '<p><b>Audio analysis</b> — tick <b>Override visual settings</b> to tune Scale, Cutoff, Smooth and Bins for the room: the panel values replace the ones written in every visual, ' +
+            'on the preview and on every Live, and stay saved. ' + icon('rotate-left') + ' <b>Reset to defaults</b> goes back to 10 / 3 / 0.8 / 6. ' +
+            'Untick it and the preview and the Lives run their saved channel again, so each visual gets back its own values.</p>' +
+            '<ul><li>With Bins lower than a visual expects, <code>a.fft[i]</code> with i ≥ Bins has no value and that visual may turn black or freeze.</li>' +
+            '<li>A visual that calls <code>a.set…</code> inside a function run at every frame is still overridden.</li></ul>'],
         ['shortcuts', 'Shortcuts', 'keyboard',
             '<table class="guide-table">' + Object.keys(SHORTCUTS).map(function(k) {
                 return '<tr><td>' + _kbd(SHORTCUTS[k].keys) + '</td><td>' + SHORTCUTS[k].label + '</td></tr>';

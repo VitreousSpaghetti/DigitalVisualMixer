@@ -374,6 +374,12 @@ button.btn-close { background: transparent url("data:image/svg+xml,%3csvg xmlns=
 tr.au-warn td { color: #ff8a80; }
 .au-meter { width: 100%; height: 200px; background: #111; border: 1px solid #333; display: block; }
 .au-h { margin: 12px 0 4px; font-size: 0.9em; }
+/* AUDIO_PARAMS: switch + reset su una riga, poi griglia etichetta | slider | valore esatto */
+.au-ovr-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.au-params { display: grid; grid-template-columns: 60px 1fr 80px; gap: 4px 8px; align-items: center; font-size: 0.85em; color: #ddd; margin-bottom: 10px; }
+.au-params input:disabled { opacity: 0.45; }
+.au-note { grid-column: 2 / 4; color: #ffb74d; }
+.au-ovr { font-size: 0.75em; font-weight: bold; padding: 0 4px; border-radius: 3px; background: #ff9800; color: #111; }
 .live-audio-tip { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 200; padding: 6px 14px;
   border-radius: 6px; background: rgba(0,0,0,0.6); color: #fff; font: 14px sans-serif; opacity: 0; pointer-events: none; transition: opacity 0.4s; }
 .live-audio-tip.show { opacity: 1; }

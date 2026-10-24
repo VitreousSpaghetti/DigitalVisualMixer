@@ -465,38 +465,69 @@ export var setTransition = async function (transitionData) {
 // (reloadDb) non la contiene e non ripassa dalle migrazioni in testa al file.
 const ENTITY_AUDIO = 'audio';
 const AUDIO_TYPES = ['off', 'default', 'device', 'system'];
+// AUDIO_PARAMS RF2/RF3: intervalli e default dell'override di `a` (default = resetAudioAndSpeed())
+const AUDIO_PARAMS = {
+    scale:  { min: 0.1, max: 30,   def: 10 },
+    cutoff: { min: 0,   max: 10,   def: 3 },
+    smooth: { min: 0,   max: 0.99, def: 0.8 },
+    bins:   { min: 1,   max: 16,   def: 6, int: true }
+};
+const AUDIO_FIELDS = ['id', 'type', 'deviceName', 'override'].concat(Object.keys(AUDIO_PARAMS));
 
 async function ensureAudioEntity() {
-    if ((await db.entityManager.listEntities()).includes(ENTITY_AUDIO)) return;
-    await db.entityManager.createEntity(ENTITY_AUDIO, {
-        type: 'table',
-        values: ['id', 'type', 'deviceName'],
-        id: ['id'],
-        notnullable: [],
-        unique: [],
-        nested: []
-    });
+    if (!(await db.entityManager.listEntities()).includes(ENTITY_AUDIO)) {
+        await db.entityManager.createEntity(ENTITY_AUDIO, {
+            type: 'table',
+            values: AUDIO_FIELDS,
+            id: ['id'],
+            notnullable: [],
+            unique: [],
+            nested: []
+        });
+        return;
+    }
+    // Entità creata da una versione senza override (o DB importato): si aggiungono i campi mancanti
+    var cfg = await db.entityManager.getEntity(ENTITY_AUDIO);
+    for (var f of AUDIO_FIELDS) {
+        if (!cfg.values.includes(f)) await db.entityManager.addField(ENTITY_AUDIO, f);
+    }
+}
+
+// E8: testo, fuori intervallo o mancante → limitato all'intervallo o default; override mancante = spento
+function _audioRecord(r) {
+    r = r || {};
+    var out = {
+        type: AUDIO_TYPES.includes(r.type) ? r.type : 'default',
+        deviceName: r.type === 'device' ? String(r.deviceName || '').slice(0, 200) : '',
+        override: r.override === true
+    };
+    for (var k in AUDIO_PARAMS) {
+        var p = AUDIO_PARAMS[k], v = Number(r[k]);
+        if (r[k] === null || r[k] === undefined || r[k] === '' || !Number.isFinite(v)) v = p.def;
+        v = Math.min(p.max, Math.max(p.min, p.int ? Math.round(v) : v));
+        out[k] = v;
+    }
+    return out;
 }
 
 // Default 'default' (mic predefinito) = comportamento di sempre prima del pannello
 export var getAudio = async function () {
     await ensureAudioEntity();
-    var r = await db.recordManager.findByIdSingle(ENTITY_AUDIO, 0);
-    return r ? { type: r.type, deviceName: r.deviceName || '' } : { type: 'default', deviceName: '' };
+    return _audioRecord(await db.recordManager.findByIdSingle(ENTITY_AUDIO, 0));
 };
 
-// Arriva dal socket: tipo fuori elenco → default, nome dispositivo come stringa corta
-export var setAudio = async function (data) {
+// Arriva dal socket. Merge con il record salvato: la scelta sorgente manda solo type/deviceName,
+// la sezione "Audio analysis" tutto il resto. persist=false (slider in movimento) non scrive db.json
+export var setAudio = async function (data, persist = true) {
     await ensureAudioEntity();
-    var record = {
-        type: AUDIO_TYPES.includes(data && data.type) ? data.type : 'default',
-        deviceName: data && data.type === 'device' ? String(data.deviceName || '').slice(0, 200) : ''
-    };
-    if (await db.recordManager.findByIdSingle(ENTITY_AUDIO, 0)) {
+    var existing = await db.recordManager.findByIdSingle(ENTITY_AUDIO, 0);
+    var { id, final, ...fields } = data || {};
+    var record = _audioRecord({ ...(existing || {}), ...fields });
+    if (existing) {
         await db.recordManager.update(ENTITY_AUDIO, { id: 0 }, record);
     } else {
         await db.recordManager.insert(ENTITY_AUDIO, { id: 0, ...record });
     }
-    await flush();
+    if (persist) await flush();
     return record;
 };
