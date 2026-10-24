@@ -1,6 +1,6 @@
 {
     "name": "LiveSetupVitreousGetCoded",
-    "version": "1.4.0",
+    "version": "1.4.1",
     "description": "Coding live setup vitreous",
     "main": "./src/app.js",
     "scripts": {
