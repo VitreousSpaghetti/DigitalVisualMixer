@@ -45,7 +45,8 @@ Apple Silicon file does not run on Intel Macs.)
 
 First run:
 
-1. Extract the zip and double-click `DigitalVisualMixer`: a Terminal window opens with the URLs.
+1. Extract the zip, move `DigitalVisualMixer.app` where you like (e.g. *Applications*) and
+   double-click it: a Terminal window opens with the URLs.
 2. The app is not signed by Apple, so macOS blocks it the first time. Open
    *System Settings → Privacy & Security*, scroll down and click **Open Anyway** next to
    "DigitalVisualMixer", then confirm. (macOS 14 and earlier: right-click the file → *Open* → *Open*.)
@@ -56,7 +57,7 @@ First run:
   reminder that MIDI needs Chrome or Edge.
 - Your data lives in `~/Library/Application Support/DigitalVisualMixer` (Finder: *Go → Go to
   Folder…*), so it survives updates and moving the app.
-- **Update** = replace only the `DigitalVisualMixer` file.
+- **Update** = replace only `DigitalVisualMixer.app`.
 
 ### Linux
 
@@ -72,6 +73,8 @@ tar -xzf ~/Downloads/DigitalVisualMixer-linux-x64.tar.gz
 
 - The default browser opens on the mixer (`xdg-open`) and the terminal shows the URLs, plus a
   reminder that MIDI needs Chrome or Chromium. Without a desktop, open the URL by hand.
+- Optional: `./install-desktop.sh` adds it to the applications menu with its icon (run it again
+  after moving the folder); it opens in a terminal window.
 - Start it from a terminal and stop it with `Ctrl+C`: launched by double-click from a file manager
   it may run with no window to close.
 - "Permission denied" (extracted with a graphical tool or copied to a FAT/NTFS drive):

@@ -2,7 +2,7 @@
  *
  * Sorgente unica: src/resource/img/alpha.png. pkg non imposta icone e i binari Mach-O / ELF non ne
  * contengono, quindi ogni piattaforma ha il suo modo:
- *  - win:   .ico generato (icon-win.ps1, System.Drawing) e scritto nelle risorse dell'exe con rcedit
+ *  - win:   .ico generato (icon-win.ps1, System.Drawing) e scritto nelle risorse dell'exe con resedit
  *  - mac:   bundle DigitalVisualMixer.app con icon.icns (sips + iconutil, solo su un Mac)
  *  - linux: icon.png + install-desktop.sh accanto al binario (voce di menu con l'icona)
  */
@@ -17,9 +17,17 @@ const target = process.argv[2];
 if (target === 'win') {
     const ico = 'dist/icon.ico';
     run('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'icon-win.ps1', PNG, path.resolve(ico)]);
-    const { rcedit } = await import('rcedit');
-    // Solo la risorsa icona: il blob SEA iniettato da pkg è un'altra risorsa e resta com'è
-    await rcedit('dist/DigitalVisualMixer.exe', { icon: ico });
+    // resedit (JS, in memoria) e non rcedit: rcedit passa dall'API UpdateResource di Windows, che con
+    // il blob SEA da ~30 MB tra le risorse non finisce più. Si sostituisce solo il gruppo icone di
+    // node (14/1/1033): il blob NODE_SEA_BLOB viene riscritto com'è
+    const ResEdit = await import('resedit');
+    const file = 'dist/DigitalVisualMixer.exe';
+    const exe = ResEdit.NtExecutable.from(fs.readFileSync(file), { ignoreCert: true });
+    const res = ResEdit.NtExecutableResource.from(exe);
+    const icons = ResEdit.Data.IconFile.from(fs.readFileSync(ico)).icons.map(i => i.data);
+    ResEdit.Resource.IconGroupEntry.replaceIconsForResource(res.entries, 1, 1033, icons);
+    res.outputResource(exe);
+    fs.writeFileSync(file, Buffer.from(exe.generate()));
     fs.rmSync(ico);
 
 } else if (target === 'mac') {

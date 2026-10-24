@@ -65,25 +65,28 @@ jobs:
       - run: npm ci --prefix packaging
       - run: npm run ${{ matrix.script }} --prefix packaging
 
-      # zip keeps the Unix execute bit (a lost bit = "permission denied" on double-click)
+      # icon.js mac moves the binary into DigitalVisualMixer.app: ditto keeps the execute bit and the
+      # xattrs holding the ad-hoc signature of the launch script (plain zip drops them)
       - name: Zip (macOS)
         if: runner.os == 'macOS'
         working-directory: packaging/dist
-        run: zip ${{ matrix.asset }} DigitalVisualMixer
+        run: ditto -c -k --keepParent DigitalVisualMixer.app ${{ matrix.asset }}
 
-      # tar.gz: the usual Linux format, and it keeps the execute bit like the zip above
+      # tar.gz: the usual Linux format, keeps the execute bit; icon.png + install-desktop.sh come
+      # from icon.js linux (menu entry with the icon)
       - name: Tar (Linux)
         if: runner.os == 'Linux'
         working-directory: packaging/dist
-        run: tar -czf ${{ matrix.asset }} DigitalVisualMixer
+        run: tar -czf ${{ matrix.asset }} DigitalVisualMixer icon.png install-desktop.sh
 
       # Smoke test on what users download: the exe, or the binary extracted from the zip / tar.gz
       - name: Smoke test
         run: |
           mkdir smoke && cd smoke
           if [ "$RUNNER_OS" = macOS ]; then
-            unzip ../packaging/dist/${{ matrix.asset }}
-            bin=./DigitalVisualMixer
+            ditto -x -k ../packaging/dist/${{ matrix.asset }} .
+            codesign --verify --deep --strict DigitalVisualMixer.app
+            bin=./DigitalVisualMixer.app/Contents/MacOS/DigitalVisualMixer
           elif [ "$RUNNER_OS" = Linux ]; then
             # Also exercises the default data/ next to the binary (created in smoke/)
             tar -xzf ../packaging/dist/${{ matrix.asset }}

@@ -32,7 +32,7 @@
     },
     "devDependencies": {
         "@yao-pkg/pkg": "6.23.0",
-        "rcedit": "5.0.2"
+        "resedit": "3.1.0"
     },
     "dependencies": {
         "LiveSetupVitreousGetCoded": "file:.."

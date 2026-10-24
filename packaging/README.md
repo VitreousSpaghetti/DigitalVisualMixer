@@ -24,7 +24,7 @@ Only on a Mac (ad-hoc signing needs `codesign`; an unsigned binary does not star
 cd packaging && npm install && npm run build:mac
 ```
 
-Output: `packaging/dist/DigitalVisualMixer` for the architecture of the Mac running the build
+Output: `packaging/dist/DigitalVisualMixer.app` (binary in `Contents/MacOS`, icon, ad-hoc signed bundle, see `icon.js`) for the architecture of the Mac running the build
 (`arm64` on Apple Silicon, `x64` on Intel). pkg already signs ad-hoc; the script re-signs with
 `codesign --force --sign -` and verifies, so the step is explicit. No Apple Developer certificate,
 no notarization: users unblock it once in *Privacy & Security → Open Anyway*.
@@ -48,8 +48,8 @@ but the release builds each arch on its own runner so the smoke test runs the re
   `macos-15-intel` (x64), `ubuntu-latest` (Linux x64), `ubuntu-24.04-arm` (Linux arm64);
 - `npm ci` + `npm run build` (rollup) from a clean checkout, then `npm ci` and the build here
   (needs both `package-lock.json` files committed);
-- macOS: `zip` of the binary (keeps the execute bit) as `DigitalVisualMixer-macos-<arch>.zip`;
-- Linux: `tar -czf` of the binary (keeps the execute bit) as `DigitalVisualMixer-linux-<arch>.tar.gz`;
+- macOS: `ditto` zip of the `.app` (keeps the execute bit and the signature xattrs) as `DigitalVisualMixer-macos-<arch>.zip`;
+- Linux: `tar -czf` of the binary + `icon.png` + `install-desktop.sh` (keeps the execute bit) as `DigitalVisualMixer-linux-<arch>.tar.gz`;
 - smoke test: starts the exe / the binary extracted from the zip or tar.gz with `NO_BROWSER=1` and fails
   the job if `http://localhost:8080/` does not answer within 60 s;
 - `gh release upload --clobber`: attaches the files with fixed names, replacing existing ones.
