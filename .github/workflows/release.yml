@@ -46,6 +46,19 @@ jobs:
         with:
           node-version: 22
 
+      # The update check compares package.json with the latest release: a tag that does not match
+      # it would ship binaries announcing a wrong version, so stop before building
+      - name: Check tag matches package.json
+        if: github.event_name == 'release'
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          pkg="v$(node -p "require('./package.json').version")"
+          if [ "$TAG" != "$pkg" ]; then
+            echo "::error::Release tag $TAG does not match package.json ($pkg): run 'npm version ${TAG#v} --no-git-tag-version', commit, then re-publish the release"
+            exit 1
+          fi
+
       # From scratch: rollupBundle/ is regenerated here, not taken from a developer machine
       - run: npm ci
       - run: npm run build

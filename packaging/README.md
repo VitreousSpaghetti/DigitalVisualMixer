@@ -58,7 +58,8 @@ but the release builds each arch on its own runner so the smoke test runs the re
 **Versioning (update check):** the app compares its `package.json` version with the latest GitHub
 Release (`/releases/latest`, drafts and pre-releases ignored) and shows a "new version" notice in the
 mixer and in `/about`. So for every release: bump `"version"` in the root `package.json` first, then
-publish a GitHub **Release** (not just a tag) named `vX.Y.Z` with the same number.
+publish a GitHub **Release** (not just a tag) named `vX.Y.Z` with the same number. The workflow
+does not change the version: it fails before building if the tag does not match `package.json`.
 
 ## How it works
 
