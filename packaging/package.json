@@ -5,9 +5,10 @@
     "type": "module",
     "bin": "launcher.js",
     "scripts": {
-        "build": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && pkg . --targets node22-win-x64 --output dist/DigitalVisualMixer.exe && node icon.js win",
-        "build:mac": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && pkg . --targets node22-macos --output dist/DigitalVisualMixer && codesign --force --sign - dist/DigitalVisualMixer && codesign --verify dist/DigitalVisualMixer && node icon.js mac",
-        "build:linux": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && pkg . --targets node22-linux --output dist/DigitalVisualMixer && node icon.js linux"
+        "clean": "node -e \"fs.mkdirSync('dist',{recursive:true});for(const f of fs.readdirSync('dist'))fs.rmSync('dist/'+f,{recursive:true,force:true})\"",
+        "build": "npm run clean && pkg . --targets node22-win-x64 --output dist/DigitalVisualMixer.exe && node icon.js win",
+        "build:mac": "npm run clean && pkg . --targets node22-macos --output dist/DigitalVisualMixer && codesign --force --sign - dist/DigitalVisualMixer && codesign --verify dist/DigitalVisualMixer && node icon.js mac",
+        "build:linux": "npm run clean && pkg . --targets node22-linux --output dist/DigitalVisualMixer && node icon.js linux"
     },
     "pkg": {
         "sea": true,
